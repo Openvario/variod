@@ -9,6 +9,8 @@ snd_pcm_uframes_t buffer_size;
 int synth_ptr=0;
 bool mute=false;
 float volume=50.0;
+float phase_ptr=0.0;
+float pulse_phase_ptr=0.0;
 
 extern float te;
 
@@ -24,8 +26,24 @@ float change_volume(float delta){
   return volume;
 }
 
+float pulse_syn(float phase, float rise, float fall, float duty ){
+  float ret;
+
+  phase= fmodf(phase,2*m_pi);
+
+  if (phase <rise) {
+    ret=phase/rise;
+    return ret>1.0?1.0:ret;
+  }
+  else if (phase < rise+duty) return 1.0;
+  else if (phase < rise+duty+fall) {
+    ret=1.0-((phase-rise-duty)/fall);
+    return ret<0.0?0.0:ret;
+  }
+  else return 0.0;
+}
+
 float triangle(float phase ){
-  //float save=phase;
 
   phase= fmodf(phase,2*m_pi);
   if (phase <m_pi) return (phase-m_pi/2)*2/m_pi;
@@ -43,7 +61,7 @@ void  Synthesise(int16_t* pcm_buffer, size_t frames_n){
 
 void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n){
    int j;
-   float freq, pulse; 
+   float freq, pulse, pulse_freq; 
    int pulse_ptr;
    
 
@@ -52,21 +70,20 @@ void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n){
      if (mute || (te>DEADBAND_LOW && te <DEADBAND_HIGH)) pcm_buffer[j]=0;
      else {
        if (te>0){
-         pulse= (te > 1)? PULSE_LENGTH/(te*PULSE_LENGTH_GAIN): PULSE_LENGTH;
+         pulse_freq = (te > 0.5)? float(sample_rate)/(float(PULSE_LENGTH)/(te*PULSE_LENGTH_GAIN)): float(sample_rate)/(float(PULSE_LENGTH*2));
          freq= BASE_FREQ_POS+(te*FREQ_GAIN_POS);
-         pulse_ptr=synth_ptr / pulse;
-         if (pulse_ptr%2)
-           pcm_buffer[j]=32.767*volume*triangle(float(synth_ptr)*m_pi*2.0/sample_rate*freq);
-         else
-           pcm_buffer[j]=0;
+         pcm_buffer[j]=pulse_syn( float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr  , PULSE_RISE,PULSE_FALL,PULSE_DUTY) * 32.767*volume*triangle(float(j)*m_pi*2.0/sample_rate*freq+phase_ptr);
        }else{
-         freq= BASE_FREQ_NEG / (1-te*FREQ_GAIN_NEG);
+         freq= BASE_FREQ_NEG / (1.0-te*FREQ_GAIN_NEG);
          pcm_buffer[j]=32.767*volume*triangle(float(synth_ptr)*m_pi*2.0/sample_rate*freq);
+         pcm_buffer[j]=32.767*volume*triangle(float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr);
        }
 
      }
      synth_ptr++;
    }
+   phase_ptr=float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr;
+   pulse_phase_ptr=float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr;
    
 }
 
