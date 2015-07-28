@@ -1,7 +1,7 @@
 # Makefile for sensord
 #Some compiler stuff and flags
 CFLAGS += -g -Wall
-EXECUTABLE = vario_app
+EXECUTABLE = varioapp
 _OBJ = audiovario.o vario_app.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 OBJ_CAL = $(patsubst %,$(ODIR)/%,$(_OBJ_CAL))
@@ -15,17 +15,17 @@ $(ODIR)/%.o: %.c
 	mkdir -p $(ODIR)
 	$(CXX) -c -o $@ $< $(CFLAGS)
 
-all: vario_app
+all: varioapp
 	
 doc: 
 	@echo Running doxygen to create documentation
 	doxygen
 	
-vario_app: $(OBJ)
+varioapp: $(OBJ)
 	$(CXX) $(LIBS) -g -o $@ $^
 	
 install: vario_app
-	install -D vario_app $(BINDIR)/$(EXECUTABLE)
+	install -D varioapp $(BINDIR)/$(EXECUTABLE)
 	
 clean:
 	rm -f $(ODIR)/*.o *~ core $(EXECUTABLE)
