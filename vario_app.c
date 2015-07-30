@@ -1,3 +1,21 @@
+/*  vario_app - Audio Vario application - http://www.openvario.org/
+    Copyright (C) 2014  The openvario project
+    A detailed list of copyright holders can be found in the file "AUTHORS" 
+
+    This program is free software; you can redistribute it and/or 
+    modify it under the terms of the GNU General Public License 
+    as published by the Free Software Foundation; either version 3
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -14,6 +32,8 @@
 
 int connfd = 0;
 float te = 0.0;
+
+int g_foreground=FALSE;
 
 pthread_t tid[2];
 
@@ -76,7 +96,17 @@ void control_audio(char* message){
   //if (cmd) toggle_mute();
 }
 
-void  INThandler(int sig)
+/**
+* @brief Signal handler if varioapp will be interrupted
+* @param sig_num
+* @return 
+* 
+* Signal handler for catching STRG-C singal from command line
+* Closes all open files handles like log files
+* @date 17.04.2014 born
+*
+*/ 
+void INThandler(int sig)
 {
      signal(sig, SIG_IGN);
      printf("Exiting ...\n");
