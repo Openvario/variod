@@ -2,7 +2,7 @@
 #Some compiler stuff and flags
 CFLAGS += -g -Wall
 EXECUTABLE = varioapp
-_OBJ = audiovario.o vario_app.o cmdline_parser.o
+_OBJ = audiovario.o varioapp.o cmdline_parser.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 OBJ_CAL = $(patsubst %,$(ODIR)/%,$(_OBJ_CAL))
 LIBS = -lasound -lm -lpthread
