@@ -44,14 +44,13 @@ int g_foreground=0;
 
 FILE *fp_console=NULL;
 
-pthread_t tid;
+pthread_t tid_audio_update;
+pthread_t tid_volume_control;
 
 float parse_TE(char* message)
 { 
 	char *te_val;
-
 	char buffer[100];
-	
 	char delimiter[]=",*";
 	char *ptr;
 	
@@ -75,8 +74,6 @@ float parse_TE(char* message)
 			te_val = (char *) malloc(strlen(ptr));
 			strncpy(te_val,ptr,strlen(ptr));
 			te = atof(te_val);
-			printf("Vario value: %f\n",te);
-			
 			break;
 			
 			default:
@@ -89,19 +86,48 @@ float parse_TE(char* message)
 }
 
 void control_audio(char* message){
-  char *cmd, *val, *end;
-  float volume;
+	
+	char *vol_val;
+	float volume;
+	char buffer[100];
+	char delimiter[]=",*";
+	char *ptr;
+	
+	// copy string and initialize strtok function
+	strncpy(buffer, message, strlen(message));
+	ptr = strtok(buffer, delimiter);
 
-  cmd=strchr(message, 'L' );
-  cmd+=sizeof(char)*2;  
-  end=strchr(cmd,',');
-  val=(char*) malloc((end-cmd)*sizeof(char));  
-  volume=atof(val);
-  change_volume(volume);
- 
-   
-  cmd=strchr(message, 'T' );
-  //if (cmd) toggle_mute();
+	while (ptr != NULL)
+	{	
+		switch (*ptr)
+		{
+			case '$':
+			// skip start of NMEA sentence
+			break;
+			
+			case 'D':
+			// Volume down by 10%
+			// get next value
+			change_volume(-10.0);
+			break;
+			
+			case 'U':
+			// Volume up by 10%
+			// get next value
+			change_volume(+10.0);
+			break;
+			
+			case 'M':
+			// Toggle Mute
+			toggle_mute();
+			break;
+			
+			default:
+			break;
+		}
+		// get next part of string
+		ptr = strtok(NULL, delimiter);
+	}
 }
 
 /**
@@ -231,14 +257,14 @@ int main(int argc, char *argv[])
 		start_pcm();
 		
 	// create alsa update thread
-	err = pthread_create(&tid, NULL, &update_audio_vario, NULL);
+	err = pthread_create(&tid_audio_update, NULL, &update_audio_vario, NULL);
 	if (err != 0)
 	{
 		fprintf(stderr, "\ncan't create thread :[%s]", strerror(err));
 	}
 	else
 	{
-		fprintf(fp_console, "\n Thread created successfully\n");
+		fprintf(fp_console, "\n Thread 'update_audio_vario' created successfully\n");
 	}
 		
 
@@ -276,7 +302,10 @@ int main(int argc, char *argv[])
 			fflush(stdout);
 			sleep(1);
 		}
-					
+			
+		// make socket to XCsoar non-blocking
+		fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
+		
 		//Receive a message from sensord and forward to XCsoar
 		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
 		{
@@ -292,7 +321,20 @@ int main(int argc, char *argv[])
 			// Send NMEA string via socket to XCSoar
 			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
 				fprintf(stderr, "send failed\n");
+			
+			// check if there is communication from XCSoar to us
+			if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
+			{
+				// we got some message
+				// terminate received buffer
+				client_message[read_size] = '\0';
+				
+				fprintf(fp_console, "from xcsoar: %s",client_message);
 
+				// parse message from XCSoar
+				control_audio(client_message);				
+			}
+			
 		}
 		
 		// connection dropped cleanup
@@ -311,8 +353,7 @@ int main(int argc, char *argv[])
 			// debug
 			printf(client_message);
 			
-			// parse message from XCSoar
-			control_audio(client_message);
+			
 			
 		}*/
 		//update audio vario
