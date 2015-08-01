@@ -131,14 +131,10 @@ int main(int argc, char *argv[])
 	int xcsoar_sock;
     float te = 2.5;
 	struct sockaddr_in server, s_xcsoar;
-	struct sockaddr s_temp;
 	int c , read_size;
 	char client_message[2000];
 	int err;
 	int nFlags;
-
-	int error_code;
-	socklen_t error_code_size;
 
 	// for daemonizing
 	pid_t pid;

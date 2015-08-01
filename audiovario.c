@@ -61,10 +61,7 @@ void  Synthesise(int16_t* pcm_buffer, size_t frames_n){
 
 void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n){
    int j;
-   float freq, pulse, pulse_freq; 
-   int pulse_ptr;
-   
-
+   float freq, pulse_freq; 
 
    for(j=0;j<frames_n;j++) {
      if (mute || (te>DEADBAND_LOW && te <DEADBAND_HIGH)) pcm_buffer[j]=0;
