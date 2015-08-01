@@ -105,6 +105,7 @@ void* update_audio_vario(void *arg)
 		int written=snd_pcm_writei(pcm_handle, &pcm_buffer, avail);
 		//printf("###sndpcm_write avail:%d,%d,%d\n", (int) avail, written, (int) period_size);
 		//printf("###called ALSA callback \n");
+		snd_pcm_wait(pcm_handle, 100 );
 	}
 }
 	      
