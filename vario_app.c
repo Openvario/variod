@@ -18,30 +18,38 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h> 
 #include <signal.h>
 #include <pthread.h>
+#include <syslog.h>
 #include "audiovario.h"
+#include "cmdline_parser.h"
 
 int connfd = 0;
 float te = 0.0;
+int g_debug=0;
 
-int g_foreground=FALSE;
+int g_foreground=0;
 
-pthread_t tid[2];
+FILE *fp_console=NULL;
+
+pthread_t tid;
 
 float parse_TE(char* message)
 { 
-	char *te_pair, *te_val, *te_end;
+	char *te_val;
 
-	
 	char buffer[100];
 	
 	char delimiter[]=",*";
@@ -110,6 +118,7 @@ void INThandler(int sig)
 {
      signal(sig, SIG_IGN);
      printf("Exiting ...\n");
+	 fclose(fp_console);
      close(connfd);
 	 exit(0);
 }
@@ -122,103 +131,183 @@ int main(int argc, char *argv[])
 	int xcsoar_sock;
     float te = 2.5;
 	struct sockaddr_in server, s_xcsoar;
+	struct sockaddr s_temp;
 	int c , read_size;
 	char client_message[2000];
 	int err;
+	int nFlags;
 
-	// create CTRL-C handler
-	signal(SIGINT, INThandler);
+	int error_code;
+	socklen_t error_code_size;
 
+	// for daemonizing
+	pid_t pid;
+	pid_t sid;
+
+	//parse command line arguments
+	cmdline_parser(argc, argv);
+	
 	// setup server
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (listenfd == -1)
     {
         printf("Could not create socket");
     }
-    puts("Socket created");
-
-
+	printf("Socket created ...\n");	
+	
 	// set server address and port for listening
 	server.sin_family = AF_INET;
-    server.sin_addr.s_addr = htonl(INADDR_ANY);
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
     server.sin_port = htons(4353);
+	
+	nFlags = fcntl(listenfd, F_GETFL, 0);
+	nFlags |= O_NONBLOCK;
+	fcntl(listenfd, F_SETFD, nFlags);
 
 	//Bind listening socket
     if( bind(listenfd,(struct sockaddr *)&server , sizeof(server)) < 0)
     {
         //print the error message
-        perror("bind failed. Error");
+        printf("bind failed. Error");
         return 1;
     }
-    puts("bind done");
+    printf("bind done\n");
 
 	listen(listenfd, 10); 
-
-	//Accept and incoming connection
-    puts("Waiting for incoming connections...");
-    c = sizeof(struct sockaddr_in);
-
-	//accept connection from an incoming client
-    connfd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
-    if (connfd < 0)
-    {
-        perror("accept failed");
-        return 1;
-    }
-    puts("Connection accepted");
-
 	
-	// Open Socket for TCP/IP communication to XCSoar
-	xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (xcsoar_sock == -1)
-		fprintf(stderr, "could not create socket\n");
-  
-	s_xcsoar.sin_addr.s_addr = inet_addr("127.0.0.1");
-	s_xcsoar.sin_family = AF_INET;
-	s_xcsoar.sin_port = htons(4352);
-
-	// try to connect to XCSoar
-	while (connect(xcsoar_sock, (struct sockaddr *)&s_xcsoar, sizeof(s_xcsoar)) < 0) {
-		fprintf(stderr, "failed to connect, trying again\n");
-		fflush(stdout);
-		sleep(1);
-	}
-
-	// setup and start pcm player
-    start_pcm();
 	
-	// create alsa update thread
-	err = pthread_create(&(tid[0]), NULL, &update_audio_vario, NULL);
-    if (err != 0)
+	// check if we are a daemon or stay in foreground
+	if (g_foreground == 1)
 	{
-        printf("\ncan't create thread :[%s]", strerror(err));
+		// create CTRL-C handler
+		//signal(SIGINT, INThandler);
+		
+		// open console again, but as file_pointer
+		fp_console = stdout;
+		stderr = stdout;
+		
+		// close the standard file descriptors
+		close(STDIN_FILENO);
+		//close(STDOUT_FILENO);
+		close(STDERR_FILENO);	
+	}
+	else
+	{
+		// implement handler for kill command
+		printf("Daemonizing ...\n");
+		pid = fork();
+		
+		// something went wrong when forking
+		if (pid < 0) 
+		{
+			exit(EXIT_FAILURE);
+		}
+		
+		// we are the parent
+		if (pid > 0)
+		{	
+			printf("parent\n");
+			exit(EXIT_SUCCESS);
+		}
+		
+		// set umask to zero
+		umask(0);
+				
+		/* Try to create our own process group */
+		sid = setsid();
+		if (sid < 0) {
+			syslog(LOG_ERR, "Could not create process group\n");
+			exit(EXIT_FAILURE);
+		}
+		
+		// close the standard file descriptors
+		close(STDIN_FILENO);
+		close(STDOUT_FILENO);
+		close(STDERR_FILENO);
+		
+		//open file for log output
+		fp_console = fopen("varioapp.log","w+");
+		setbuf(fp_console, NULL);
+		stderr = fp_console;
+	}
+	
+	// setup and start pcm player
+		start_pcm();
+		
+	// create alsa update thread
+	err = pthread_create(&tid, NULL, &update_audio_vario, NULL);
+	if (err != 0)
+	{
+		fprintf(stderr, "\ncan't create thread :[%s]", strerror(err));
+	}
+	else
+	{
+		fprintf(fp_console, "\n Thread created successfully\n");
 	}
 		
-    else
-        printf("\n Thread created successfully\n");
 
-    
-	//Receive a message from sensord and forward to XCsoar
-	while (1)
+	
+	while(1)
 	{
-		if ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
+		//Accept and incoming connection
+		fprintf(fp_console,"Waiting for incoming connections...\n");
+		fflush(fp_console);
+		c = sizeof(struct sockaddr_in);
+
+		//accept connection from an incoming client
+		connfd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
+		if (connfd < 0)
+		{
+			fprintf(stderr, "accept failed");
+			return 1;
+		}
+	
+		fprintf(fp_console, "Connection accepted\n");	
+		
+		// Socket is connected
+		// Open Socket for TCP/IP communication to XCSoar
+		xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (xcsoar_sock == -1)
+			fprintf(stderr, "could not create socket\n");
+	  
+		s_xcsoar.sin_addr.s_addr = inet_addr("127.0.0.1");
+		s_xcsoar.sin_family = AF_INET;
+		s_xcsoar.sin_port = htons(4352);
+
+		// try to connect to XCSoar
+		while (connect(xcsoar_sock, (struct sockaddr *)&s_xcsoar, sizeof(s_xcsoar)) < 0) {
+			fprintf(stderr, "failed to connect, trying again\n");
+			fflush(stdout);
+			sleep(1);
+		}
+					
+		//Receive a message from sensord and forward to XCsoar
+		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
 		{
 			// terminate received buffer
 			client_message[read_size] = '\0';
 
-            //get the TE value from the message 
-            te=parse_TE(client_message);
+			//get the TE value from the message 
+			te=parse_TE(client_message);
 			
 			//Send the message back to client
-			printf(client_message);
+			//printf(client_message);
 
 			// Send NMEA string via socket to XCSoar
 			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
 				fprintf(stderr, "send failed\n");
 
 		}
-
-	/*	if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
+		
+		// connection dropped cleanup
+		fprintf(fp_console, "Connection dropped\n");	
+		fflush(fp_console);
+		
+		close(xcsoar_sock);
+		close(connfd);
+		te=0.0;
+		
+		/*	if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
 		{
 			// terminate received buffer
 			client_message[read_size] = '\0';
@@ -231,11 +320,8 @@ int main(int argc, char *argv[])
 			
 		}*/
 		//update audio vario
-        //update_audio_vario(te);
+		//update_audio_vario(te);
+		
 	}
-    
-	close(connfd);
-    stop_pcm();
-	
     return 0;
 }
