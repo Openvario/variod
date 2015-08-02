@@ -81,10 +81,13 @@ void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n, t_vario_co
      if (mute || (te > vario_config->deadband_low && te < vario_config->deadband_high)) pcm_buffer[j]=0;
      else {
        if (te > 0)
+	   {
 		 pulse_freq = (te > 0.5)? float(sample_rate)/(vario_config->pulse_length/(te*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2)));
          freq= vario_config->base_freq_pos+(te*FREQ_GAIN_POS);
          pcm_buffer[j]=pulse_syn( float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr  , PULSE_RISE,PULSE_FALL,PULSE_DUTY) * 32.767*volume*triangle(float(j)*m_pi*2.0/sample_rate*freq+phase_ptr);
-       }else{
+       }
+	   else
+	   {
          freq= vario_config->base_freq_neg / (1.0-te*FREQ_GAIN_NEG);
          pcm_buffer[j]=32.767*volume*triangle(float(synth_ptr)*m_pi*2.0/sample_rate*freq);
          pcm_buffer[j]=32.767*volume*triangle(float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr);
