@@ -12,10 +12,23 @@ float volume=50.0;
 float phase_ptr=0.0;
 float pulse_phase_ptr=0.0;
 
+t_vario_config vario_config;
+
 extern float te;
 
 void toggle_mute(){
   mute=!mute;
+}
+
+void init_vario_config(t_vario_config *vario_config)
+{
+	// init config struct
+	vario_config->deadband_low = DEADBAND_LOW;
+	vario_config->deadband_high = DEADBAND_HIGH;
+	vario_config->pulse_length = PULSE_LENGTH;
+	vario_config->pulse_length_gain = PULSE_LENGTH_GAIN;
+	vario_config->base_freq_pos = BASE_FREQ_POS;
+	vario_config->base_freq_neg = BASE_FREQ_NEG;
 }
 
 float change_volume(float delta){
@@ -60,19 +73,19 @@ void  Synthesise(int16_t* pcm_buffer, size_t frames_n){
   }
 }
 
-void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n){
+void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config){
    int j;
    float freq, pulse_freq; 
 
    for(j=0;j<frames_n;j++) {
-     if (mute || (te>DEADBAND_LOW && te <DEADBAND_HIGH)) pcm_buffer[j]=0;
+     if (mute || (te > vario_config->deadband_low && te < vario_config->deadband_high)) pcm_buffer[j]=0;
      else {
-       if (te>0){
-         pulse_freq = (te > 0.5)? float(sample_rate)/(float(PULSE_LENGTH)/(te*PULSE_LENGTH_GAIN)): float(sample_rate)/(float(PULSE_LENGTH*2));
-         freq= BASE_FREQ_POS+(te*FREQ_GAIN_POS);
+       if (te > 0)
+		 pulse_freq = (te > 0.5)? float(sample_rate)/(vario_config->pulse_length/(te*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2)));
+         freq= vario_config->base_freq_pos+(te*FREQ_GAIN_POS);
          pcm_buffer[j]=pulse_syn( float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr  , PULSE_RISE,PULSE_FALL,PULSE_DUTY) * 32.767*volume*triangle(float(j)*m_pi*2.0/sample_rate*freq+phase_ptr);
        }else{
-         freq= BASE_FREQ_NEG / (1.0-te*FREQ_GAIN_NEG);
+         freq= vario_config->base_freq_neg / (1.0-te*FREQ_GAIN_NEG);
          pcm_buffer[j]=32.767*volume*triangle(float(synth_ptr)*m_pi*2.0/sample_rate*freq);
          pcm_buffer[j]=32.767*volume*triangle(float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr);
        }
@@ -101,7 +114,7 @@ void* update_audio_vario(void *arg)
 		}
 
 		if ((size_t)avail > BUFFER_SIZE) avail= (snd_pcm_sframes_t) BUFFER_SIZE;
-		synthesise_vario(te, pcm_buffer, (size_t)avail);
+		synthesise_vario(te, pcm_buffer, (size_t)avail, &vario_config);
 
 		int written=snd_pcm_writei(pcm_handle, &pcm_buffer, avail);
 		//printf("###sndpcm_write avail:%d,%d,%d\n", (int) avail, written, (int) period_size);

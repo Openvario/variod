@@ -30,20 +30,23 @@ extern int g_debug;
 extern int g_foreground;
 
 extern FILE *fp_console;
+extern FILE *fp_config;
 
 void cmdline_parser(int argc, char **argv){
 
 	// locale variables
 	int c;
+	char config_filename[50];
 	
 	const char* Usage = "\n"\
     "  -v              print version information\n"\
 	"  -f              don't daemonize, stay in foreground\n"\
+	"  -c [filename]   use config file [filename]\n"\
 	"  -d[n]           set debug level. n can be [1..2]. default=1\n"\
 	"\n";
 	
 	// check commandline arguments
-	while ((c = getopt (argc, argv, "vd::f")) != -1)
+	while ((c = getopt (argc, argv, "vc:d::f")) != -1)
 	{
 		switch (c) {
 			case 'v':
@@ -52,7 +55,32 @@ void cmdline_parser(int argc, char **argv){
 				printf("This program comes with ABSOLUTELY NO WARRANTY;\n");
 				printf("This is free software, and you are welcome to redistribute it under certain conditions;\n"); 
 				break;
-				
+			
+			case 'c':
+				// use config file
+				if (optarg == NULL)
+				{
+					printf("Missing option for -c\n");
+					printf("Exiting ...\n");
+					exit(EXIT_FAILURE);
+				}
+				else
+				{
+					strcpy(config_filename, optarg);
+					printf("!! Using config file %s !!\n", config_filename);
+					
+					// Open the fp to config file
+					fp_config = fopen(config_filename,"r");
+					
+					//check if config file opened ok ...
+					if( fp_config == NULL)
+					{
+						printf("Error opening config file: %s\n", config_filename);
+						printf("Exiting ...\n");
+						exit(EXIT_FAILURE);
+					}
+				}
+				break;
 			case 'd':
 				if (optarg == NULL)
 				{

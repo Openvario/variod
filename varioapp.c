@@ -35,6 +35,7 @@
 #include <syslog.h>
 #include "audiovario.h"
 #include "cmdline_parser.h"
+#include "configfile_parser.h"
 
 int connfd = 0;
 float te = 0.0;
@@ -43,6 +44,9 @@ int g_debug=0;
 int g_foreground=0;
 
 FILE *fp_console=NULL;
+FILE *fp_config=NULL;
+
+extern t_vario_config vario_config;
 
 pthread_t tid_audio_update;
 pthread_t tid_volume_control;
@@ -87,8 +91,6 @@ float parse_TE(char* message)
 
 void control_audio(char* message){
 	
-	char *vol_val;
-	float volume;
 	char buffer[100];
 	char delimiter[]=",*";
 	char *ptr;
@@ -149,6 +151,22 @@ void INThandler(int sig)
 	 exit(0);
 }
      
+void print_runtime_config(t_vario_config *vario_config)
+{
+	// print actual used config
+	fprintf(fp_console,"=========================================================================\n");
+	fprintf(fp_console,"Runtime Configuration:\n");
+	fprintf(fp_console,"----------------------\n");
+	fprintf(fp_console,"Vario:\n");
+	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config->deadband_low);
+	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config->deadband_high);
+	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config->pulse_length);
+	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config->pulse_length_gain);
+	fprintf(fp_console,"  Base Frequency Positive:\t%d\n",vario_config->base_freq_pos);
+	fprintf(fp_console,"  Base Frequency Negative:\t%d\n",vario_config->base_freq_neg);
+	fprintf(fp_console,"=========================================================================\n");
+	
+}
 
 int main(int argc, char *argv[])
 {
@@ -166,9 +184,23 @@ int main(int argc, char *argv[])
 	pid_t pid;
 	pid_t sid;
 
+	printf("1\n");	
 	//parse command line arguments
 	cmdline_parser(argc, argv);
 	
+	printf("2\n");	
+	// init vario config structure
+	init_vario_config(&vario_config);
+	
+	printf("3\n");	
+	// read config file
+	// get config file options
+	if (fp_config != NULL)
+		cfgfile_parser(fp_config, &vario_config);
+	
+	printf("4\n");	
+	
+	printf("5\n");	
 	// setup server
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (listenfd == -1)
@@ -252,6 +284,9 @@ int main(int argc, char *argv[])
 		setbuf(fp_console, NULL);
 		stderr = fp_console;
 	}
+	
+	// all filepointers setup -> print config
+	print_runtime_config(&vario_config);
 	
 	// setup and start pcm player
 		start_pcm();
@@ -343,22 +378,10 @@ int main(int argc, char *argv[])
 		
 		close(xcsoar_sock);
 		close(connfd);
-		te=0.0;
-		
-		/*	if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
-		{
-			// terminate received buffer
-			client_message[read_size] = '\0';
-			
-			// debug
-			printf(client_message);
-			
-			
-			
-		}*/
-		//update audio vario
-		//update_audio_vario(te);
-		
+		te=0.0;		
 	}
     return 0;
 }
+
+
+

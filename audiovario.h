@@ -23,14 +23,24 @@
 #define FREQ_GAIN_POS 180
 #define FREQ_GAIN_NEG 0.75
 
+typedef struct{
+	float deadband_low;
+	float deadband_high;
+	int pulse_length;
+	float pulse_length_gain;
+	int base_freq_pos;
+	int base_freq_neg;
+} t_vario_config;
+
 
 void toggle_mute();
 float change_volume(float delta);
 float triangle(float phase );
 void  Synthesise(int16_t* pcm_buffer, size_t frames_n);
-void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n);
+void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n,t_vario_config *vario_config);
 void* update_audio_vario(void *);
 int start_pcm();
 int stop_pcm();
+void init_vario_config(t_vario_config *);
 
 #endif
