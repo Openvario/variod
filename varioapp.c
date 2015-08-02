@@ -184,23 +184,17 @@ int main(int argc, char *argv[])
 	pid_t pid;
 	pid_t sid;
 
-	printf("1\n");	
 	//parse command line arguments
 	cmdline_parser(argc, argv);
 	
-	printf("2\n");	
 	// init vario config structure
 	init_vario_config(&vario_config);
-	
-	printf("3\n");	
+
 	// read config file
 	// get config file options
 	if (fp_config != NULL)
 		cfgfile_parser(fp_config, &vario_config);
 	
-	printf("4\n");	
-	
-	printf("5\n");	
 	// setup server
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (listenfd == -1)
@@ -225,10 +219,8 @@ int main(int argc, char *argv[])
         printf("bind failed. Error");
         return 1;
     }
-    printf("bind done\n");
-
-	listen(listenfd, 10); 
 	
+	listen(listenfd, 10); 
 	
 	// check if we are a daemon or stay in foreground
 	if (g_foreground == 1)
@@ -260,7 +252,6 @@ int main(int argc, char *argv[])
 		// we are the parent
 		if (pid > 0)
 		{	
-			printf("parent\n");
 			exit(EXIT_SUCCESS);
 		}
 		
