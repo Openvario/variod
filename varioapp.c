@@ -328,7 +328,10 @@ int main(int argc, char *argv[])
 			fflush(stdout);
 			sleep(1);
 		}
-			
+		
+		//enable vario sound
+		toggle_mute();	
+		
 		// make socket to XCsoar non-blocking
 		fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
 		

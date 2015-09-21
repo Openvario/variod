@@ -7,7 +7,7 @@ unsigned int sample_rate=44100;
 snd_pcm_uframes_t period_size;
 snd_pcm_uframes_t buffer_size;
 int synth_ptr=0;
-bool mute=false;
+bool mute=true;
 float volume=50.0;
 float phase_ptr=0.0;
 float pulse_phase_ptr=0.0;
