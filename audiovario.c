@@ -64,15 +64,6 @@ float triangle(float phase ){
   else return 1-(phase-m_pi)*2/m_pi;
 }
 
-
-void  Synthesise(int16_t* pcm_buffer, size_t frames_n){
-  unsigned int j;
-  for(j=0;j<frames_n;j++) {
-    pcm_buffer[j]=32767*triangle(float(synth_ptr)*m_pi*2.0/sample_rate*(100+(1+sin(float(synth_ptr)/sample_rate/10.0)*400.0)));
-    synth_ptr++;
-  }
-}
-
 void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config){
    unsigned int j;
    float freq, pulse_freq; 
@@ -120,8 +111,6 @@ void* update_audio_vario(void *arg)
 		synthesise_vario(te, pcm_buffer, (size_t)avail, &vario_config);
 
 		snd_pcm_writei(pcm_handle, &pcm_buffer, avail);
-		//printf("###sndpcm_write avail:%d,%d,%d\n", (int) avail, written, (int) period_size);
-		//printf("###called ALSA callback \n");
 		snd_pcm_wait(pcm_handle, 100 );
 	}
 }

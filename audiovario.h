@@ -36,7 +36,6 @@ typedef struct{
 void toggle_mute();
 float change_volume(float delta);
 float triangle(float phase );
-void  Synthesise(int16_t* pcm_buffer, size_t frames_n);
 void synthesise_vario(float te, int16_t* pcm_buffer, size_t frames_n,t_vario_config *vario_config);
 void* update_audio_vario(void *);
 int start_pcm();
