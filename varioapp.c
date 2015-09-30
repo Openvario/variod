@@ -89,7 +89,7 @@ float parse_TE(char* message)
   return te;
 }
 
-void control_audio(char* message){
+void parse_NMEA_command(char* message){
 	
 	char buffer[100];
 	char delimiter[]=",*";
@@ -107,21 +107,31 @@ void control_audio(char* message){
 			// skip start of NMEA sentence
 			break;
 			
-			case 'D':
-			// Volume down by 10%
+			case 'C':
+			// Command sentence
 			// get next value
-			change_volume(-10.0);
-			break;
+			ptr = strtok(NULL, delimiter);
 			
-			case 'U':
-			// Volume up by 10%
-			// get next value
-			change_volume(+10.0);
-			break;
-			
-			case 'M':
-			// Toggle Mute
-			toggle_mute();
+			switch (*ptr)
+			{
+				case 'V':
+				if (*(ptr+1) == 'U') {
+					// volume up
+					//printf("Volume up\n");
+					change_volume(+10.0);
+				}
+				if (*(ptr+1) == 'D') {
+					// volume down
+					//printf("Volume down\n");
+					change_volume(-10.0);
+				}
+				if (*(ptr+1) == 'M') {
+					// Toggle Mute
+					//printf("Toggle Mute\n");
+					toggle_mute();
+				}
+				break;
+			}
 			break;
 			
 			default:
@@ -345,7 +355,7 @@ int main(int argc, char *argv[])
 			te=parse_TE(client_message);
 			
 			//Send the message back to client
-			//printf(client_message);
+			//printf("SendNMEA: %s",client_message);
 
 			// Send NMEA string via socket to XCSoar
 			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
@@ -361,7 +371,7 @@ int main(int argc, char *argv[])
 				fprintf(fp_console, "from xcsoar: %s",client_message);
 
 				// parse message from XCSoar
-				control_audio(client_message);				
+				parse_NMEA_command(client_message);				
 			}
 			
 		}
