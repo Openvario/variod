@@ -53,43 +53,144 @@ int cfgfile_parser(FILE *fp, t_vario_config *vario_config)
 				if (strcmp(tmp,"deadband_low") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &vario_config->deadband_low);	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].deadband_low));	
 				}
 				
 				// check for deadband_high
 				if (strcmp(tmp,"deadband_high") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &vario_config->deadband_high);	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].deadband_high));	
 				}
 				
 				// check for pulse_length
 				if (strcmp(tmp,"pulse_length") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &vario_config->pulse_length);	
+					sscanf(line, "%s %d", tmp, &(vario_config[vario].pulse_length));	
 				}
 				
 				// check for pulse gain
 				if (strcmp(tmp,"pulse_length_gain") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &vario_config->pulse_length_gain);	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_length_gain));	
 				}
 				
+				// check for pulse duty 
+				if (strcmp(tmp,"pulse_duty") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_duty));	
+				}
+				// check for pulse rise
+				if (strcmp(tmp,"pulse_rise") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_rise));	
+				}
+				// check for pulse fall  
+				if (strcmp(tmp,"pulse_fall") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_fall));	
+				}
 				// check for base frequency positive
 				if (strcmp(tmp,"base_freq_pos") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &vario_config->base_freq_pos);	
+					sscanf(line, "%s %d", tmp, &(vario_config[vario].base_freq_pos));	
 				}
 				
 				// check for base frequency negative
 				if (strcmp(tmp,"base_freq_neg") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &vario_config->base_freq_neg);	
+					sscanf(line, "%s %d", tmp, &(vario_config[vario].base_freq_neg));	
 				}				
+				// check for frequency gain positive  
+				if (strcmp(tmp,"freq_gain_pos") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].freq_gain_pos));	
+				}
+				// check for frequency gain negative  
+				if (strcmp(tmp,"freq_gain_neg") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].freq_gain_neg));	
+				}
+				// check for stf_deadband_low
+				if (strcmp(tmp,"stf_deadband_low") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].deadband_low));	
+				}
+				
+				// check for stf_deadband_high
+				if (strcmp(tmp,"stf_deadband_high") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].deadband_high));	
+				}
+				
+				// check for stf_pulse_length
+				if (strcmp(tmp,"stf_pulse_length") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %d", tmp, &(vario_config[stf].pulse_length));	
+				}
+				
+				// check for stf_pulse gain
+				if (strcmp(tmp,"stf_pulse_length_gain") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_length_gain));	
+				}
+				
+				// check for pulse duty 
+				if (strcmp(tmp,"stf_pulse_duty") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_duty));	
+				}
+				// check for pulse rise
+				if (strcmp(tmp,"stf_pulse_rise") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_rise));	
+				}
+				// check for pulse fall  
+				if (strcmp(tmp,"stf_pulse_fall") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_fall));	
+				}
+				// check for base frequency positive
+				if (strcmp(tmp,"stf_base_freq_pos") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %d", tmp, &(vario_config[stf].base_freq_pos));	
+				}
+				
+				// check for base frequency negative
+				if (strcmp(tmp,"stf_base_freq_neg") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %d", tmp, &(vario_config[stf].base_freq_neg));	
+				}				
+				// check for frequency gain positive  
+				if (strcmp(tmp,"stf_freq_gain_pos") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].freq_gain_pos));	
+				}
+				// check for frequency gain negative  
+				if (strcmp(tmp,"stf_freq_gain_neg") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].freq_gain_neg));	
+				}
 			}
 		}
 		return(1);

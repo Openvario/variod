@@ -1,5 +1,7 @@
+
+
 /*  
-	sensord - Sensor Interface for XCSoar Glide Computer - http://www.openvario.org/
+	  sensord - Sensor Interface for XCSoar Glide Computer - http://www.openvario.org/
     Copyright (C) 2014  The openvario project
     A detailed list of copyright holders can be found in the file "AUTHORS" 
 
@@ -17,6 +19,32 @@
     along with this program; if not, see <http://www.gnu.org/licenses/>.	
 */
 
-#include "audiovario.h"
+#ifndef NMEA_PARSER 
+#define NMEA_PARSER
 
-int cfgfile_parser(FILE *, t_vario_config *);
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "audiovario.h"
+#include "stf.h"
+
+typedef struct{
+	//TE-compensated Vario [m/s]
+	float e;
+	//true airspeed [km/h]
+	float s;
+  //static pressure [hPa]
+	float p;
+	//dynamic pressure [Pa]
+	float q;
+	//total pressure [hPa]
+	float r;
+	//temperature [deg C]
+ 	float t; 
+} t_sensor_context; 
+
+
+void parse_NMEA_sensor(char* message, t_sensor_context* sensors);
+void parse_NMEA_command(char* message);
+
+#endif

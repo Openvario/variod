@@ -36,9 +36,16 @@
 #include "audiovario.h"
 #include "cmdline_parser.h"
 #include "configfile_parser.h"
+#include "stf.h"
+#include "nmea_parser.h"
+
 
 int connfd = 0;
-float te = 0.0;
+
+//this is the value to be synthesised: In vario mode it's the TE compensated
+//climb/sink value, in STF it is a value correlating to the difference of STF,
+//and current airspeed
+
 int g_debug=0;
 
 int g_foreground=0;
@@ -46,101 +53,12 @@ int g_foreground=0;
 FILE *fp_console=NULL;
 FILE *fp_config=NULL;
 
-extern t_vario_config vario_config;
+extern t_vario_config vario_config[2];
+extern enum e_vario_mode vario_mode;
+extern float audio_val;
 
 pthread_t tid_audio_update;
 pthread_t tid_volume_control;
-
-float parse_TE(char* message)
-{ 
-	char *te_val;
-	char buffer[100];
-	char delimiter[]=",*";
-	char *ptr;
-	
-	// copy string and initialize strtok function
-	strncpy(buffer, message, strlen(message));
-	ptr = strtok(buffer, delimiter);	
-	
-	while (ptr != NULL)
-	{
-		
-		switch (*ptr)
-		{
-			case '$':
-			// skip start of NMEA sentence
-			break;
-			
-			case 'E':
-			// TE vario value
-			// get next value
-			ptr = strtok(NULL, delimiter);
-			te_val = (char *) malloc(strlen(ptr));
-			strncpy(te_val,ptr,strlen(ptr));
-			te = atof(te_val);
-			break;
-			
-			default:
-			break;
-		}
-		// get next part of string
-		ptr = strtok(NULL, delimiter);
-	}
-  return te;
-}
-
-void parse_NMEA_command(char* message){
-	
-	char buffer[100];
-	char delimiter[]=",*";
-	char *ptr;
-	
-	// copy string and initialize strtok function
-	strncpy(buffer, message, strlen(message));
-	ptr = strtok(buffer, delimiter);
-
-	while (ptr != NULL)
-	{	
-		switch (*ptr)
-		{
-			case '$':
-			// skip start of NMEA sentence
-			break;
-			
-			case 'C':
-			// Command sentence
-			// get next value
-			ptr = strtok(NULL, delimiter);
-			
-			switch (*ptr)
-			{
-				case 'V':
-				if (*(ptr+1) == 'U') {
-					// volume up
-					//printf("Volume up\n");
-					change_volume(+10.0);
-				}
-				if (*(ptr+1) == 'D') {
-					// volume down
-					//printf("Volume down\n");
-					change_volume(-10.0);
-				}
-				if (*(ptr+1) == 'M') {
-					// Toggle Mute
-					//printf("Toggle Mute\n");
-					toggle_mute();
-				}
-				break;
-			}
-			break;
-			
-			default:
-			break;
-		}
-		// get next part of string
-		ptr = strtok(NULL, delimiter);
-	}
-}
 
 /**
 * @brief Signal handler if varioapp will be interrupted
@@ -154,11 +72,11 @@ void parse_NMEA_command(char* message){
 */ 
 void INThandler(int sig)
 {
-     signal(sig, SIG_IGN);
-     printf("Exiting ...\n");
-	 fclose(fp_console);
-     close(connfd);
-	 exit(0);
+	signal(sig, SIG_IGN);
+	printf("Exiting ...\n");
+	fclose(fp_console);
+	close(connfd);
+	exit(0);
 }
      
 void print_runtime_config(t_vario_config *vario_config)
@@ -174,8 +92,7 @@ void print_runtime_config(t_vario_config *vario_config)
 	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config->pulse_length_gain);
 	fprintf(fp_console,"  Base Frequency Positive:\t%d\n",vario_config->base_freq_pos);
 	fprintf(fp_console,"  Base Frequency Negative:\t%d\n",vario_config->base_freq_neg);
-	fprintf(fp_console,"=========================================================================\n");
-	
+	fprintf(fp_console,"=========================================================================\n");	
 }
 
 int main(int argc, char *argv[])
@@ -183,12 +100,13 @@ int main(int argc, char *argv[])
 	int listenfd = 0;
 	// socket communication
 	int xcsoar_sock;
-    float te = 2.5;
 	struct sockaddr_in server, s_xcsoar;
 	int c , read_size;
 	char client_message[2000];
 	int err;
 	int nFlags;
+  t_sensor_context sensors;
+  float v_sink_net;
 
 	// for daemonizing
 	pid_t pid;
@@ -198,12 +116,13 @@ int main(int argc, char *argv[])
 	cmdline_parser(argc, argv);
 	
 	// init vario config structure
-	init_vario_config(&vario_config);
+	init_vario_config();
+  setMC(1.0);
 
 	// read config file
 	// get config file options
 	if (fp_config != NULL)
-		cfgfile_parser(fp_config, &vario_config);
+		cfgfile_parser(fp_config, &vario_config[vario_mode]);
 	
 	// setup server
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -215,8 +134,8 @@ int main(int argc, char *argv[])
 	
 	// set server address and port for listening
 	server.sin_family = AF_INET;
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");
-    server.sin_port = htons(4353);
+	server.sin_addr.s_addr = inet_addr("127.0.0.1");
+	server.sin_port = htons(4353);
 	
 	nFlags = fcntl(listenfd, F_GETFL, 0);
 	nFlags |= O_NONBLOCK;
@@ -284,29 +203,23 @@ int main(int argc, char *argv[])
 		fp_console = fopen("varioapp.log","w+");
 		setbuf(fp_console, NULL);
 		stderr = fp_console;
-	}
+  }
 	
 	// all filepointers setup -> print config
-	print_runtime_config(&vario_config);
+	print_runtime_config(&vario_config[vario_mode]);
 	
 	// setup and start pcm player
-		start_pcm();
+	start_pcm();
 		
 	// create alsa update thread
 	err = pthread_create(&tid_audio_update, NULL, &update_audio_vario, NULL);
-	if (err != 0)
-	{
+	if (err != 0)	{
 		fprintf(stderr, "\ncan't create thread :[%s]", strerror(err));
-	}
-	else
-	{
+	}else{
 		fprintf(fp_console, "\n Thread 'update_audio_vario' created successfully\n");
 	}
-		
-
 	
-	while(1)
-	{
+	while(1) {
 		//Accept and incoming connection
 		fprintf(fp_console,"Waiting for incoming connections...\n");
 		fflush(fp_console);
@@ -351,9 +264,17 @@ int main(int argc, char *argv[])
 			// terminate received buffer
 			client_message[read_size] = '\0';
 
-			//get the TE value from the message 
-			te=parse_TE(client_message);
-			
+      parse_NMEA_sensor(client_message, &sensors);
+			//get the TE value from the message
+			switch(vario_mode){
+				case vario: 
+					set_audio_val(sensors.e);
+				break;
+				case stf:
+          v_sink_net=getNet( -sensors.e, sensors.s/3.6);
+					set_audio_val((sensors.s/3.6)-getSTF(v_sink_net));
+				break;
+			}
 			//Send the message back to client
 			//printf("SendNMEA: %s",client_message);
 
@@ -371,7 +292,8 @@ int main(int argc, char *argv[])
 				fprintf(fp_console, "from xcsoar: %s",client_message);
 
 				// parse message from XCSoar
-				parse_NMEA_command(client_message);				
+				parse_NMEA_command(client_message);	
+        	
 			}
 			
 		}
@@ -382,9 +304,8 @@ int main(int argc, char *argv[])
 		
 		close(xcsoar_sock);
 		close(connfd);
-		te=0.0;		
 	}
-    return 0;
+	return 0;
 }
 
 
