@@ -61,7 +61,7 @@ pthread_t tid_audio_update;
 pthread_t tid_volume_control;
 
 /**
-* @brief Signal handler if varioapp will be interrupted
+* @brief Signal handler if variod will be interrupted
 * @param sig_num
 * @return 
 * 
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 		close(STDERR_FILENO);
 		
 		//open file for log output
-		fp_console = fopen("varioapp.log","w+");
+		fp_console = fopen("variod.log","w+");
 		setbuf(fp_console, NULL);
 		stderr = fp_console;
   }

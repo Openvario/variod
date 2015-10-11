@@ -1,5 +1,5 @@
 /*  
-	varioapp -  - http://www.openvario.org/
+	variod -  - http://www.openvario.org/
     Copyright (C) 2014  The openvario project
     A detailed list of copyright holders can be found in the file "AUTHORS" 
 

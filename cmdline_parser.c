@@ -1,5 +1,5 @@
 /*  
-	varioapp -  - http://www.openvario.org/
+	variod -  - http://www.openvario.org/
     Copyright (C) 2014  The openvario project
     A detailed list of copyright holders can be found in the file "AUTHORS" 
 
@@ -50,8 +50,8 @@ void cmdline_parser(int argc, char **argv){
 	{
 		switch (c) {
 			case 'v':
-				printf("varioapp V%c.%c RELEASE %c build: %s %s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE,  __DATE__, __TIME__);
-				printf("varioapp  Copyright (C) 2014  see AUTHORS on www.openvario.org\n");
+				printf("variod V%c.%c RELEASE %c build: %s %s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE,  __DATE__, __TIME__);
+				printf("variod  Copyright (C) 2014  see AUTHORS on www.openvario.org\n");
 				printf("This program comes with ABSOLUTELY NO WARRANTY;\n");
 				printf("This is free software, and you are welcome to redistribute it under certain conditions;\n"); 
 				break;
