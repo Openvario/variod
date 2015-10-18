@@ -100,7 +100,7 @@ void cmdline_parser(int argc, char **argv){
 				
 			case '?':
 				printf("Unknow option %c\n", optopt);
-				printf("Usage: sensord [OPTION]\n%s",Usage);
+				printf("Usage: variod [OPTION]\n%s",Usage);
 				printf("Exiting ...\n");
 				exit(EXIT_FAILURE);
 				break;
