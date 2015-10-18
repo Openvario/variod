@@ -38,6 +38,7 @@
 #include "configfile_parser.h"
 #include "stf.h"
 #include "nmea_parser.h"
+#include "def.h"
 
 
 int connfd = 0;
@@ -289,7 +290,7 @@ int main(int argc, char *argv[])
 				// terminate received buffer
 				client_message[read_size] = '\0';
 				
-				fprintf(fp_console, "from xcsoar: %s",client_message);
+				ddebug_print("Message from XCSoar: %s\n",client_message);
 
 				// parse message from XCSoar
 				parse_NMEA_command(client_message);	

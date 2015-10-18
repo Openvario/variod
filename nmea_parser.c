@@ -1,4 +1,9 @@
 #include "nmea_parser.h"
+#include "def.h"
+
+extern int g_debug;
+extern int g_foreground;
+extern FILE *fp_console;
 
 void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 { 
@@ -72,6 +77,7 @@ void parse_NMEA_command(char* message){
 						val = (char *) malloc(strlen(ptr));
 						strncpy(val,ptr,strlen(ptr));
 						setMC(atof(val));
+						debug_print("Get McCready Value: %f\n",atof(val));
 					}
 				break;
 				case 'P':
@@ -97,29 +103,29 @@ void parse_NMEA_command(char* message){
 				case 'S':
 					if (*(ptr+1) == 'T' && *(ptr+2) == 'F') {
 						// Set STF Mode
-						//printf("Set STF Mode\n");
+						debug_print("Set STF Mode\n");
 						set_vario_mode(stf);
 					}
 				break;
 				case 'V':
 					if (*(ptr+1) == 'U') {
 						// volume up
-						//printf("Volume up\n");
+						debug_print("Volume up\n");
 						change_volume(+10.0);
 					}
 					if (*(ptr+1) == 'D') {
 						// volume down
-						//printf("Volume down\n");
+						debug_print("Volume down\n");
 						change_volume(-10.0);
 					}
 					if (*(ptr+1) == 'M') {
 						// Toggle Mute
-						//printf("Toggle Mute\n");
+						debug_print("Toggle Mute\n");
 						toggle_mute();
 					}
 					if (*(ptr+1) == 'A' &&  *(ptr+2) == 'R') {
 						// Set Vario Mode
-						//printf("Set Vario Mode\n");
+						debug_print("Set Vario Mode\n");
 						set_vario_mode(vario);
 					}
 				break;
