@@ -80,6 +80,29 @@ void parse_NMEA_command(char* message){
 						debug_print("Get McCready Value: %f\n",atof(val));
 					}
 				break;
+				
+				case 'W':
+					if (*(ptr+1) == 'L') {
+						//Set Wingload/Ballast 
+						ptr = strtok(NULL, delimiter);
+						val = (char *) malloc(strlen(ptr));
+						strncpy(val,ptr,strlen(ptr));
+						setBallast(atof(val));
+						debug_print("Get Ballast Value: %f\n",atof(val));
+					}
+				break;
+				
+				case 'B':
+					if (*(ptr+1) == 'U') {
+						//Set Bugs 
+						ptr = strtok(NULL, delimiter);
+						val = (char *) malloc(strlen(ptr));
+						strncpy(val,ptr,strlen(ptr));
+						setDegradation(atof(val));
+						debug_print("Get Bugs Value: %f\n",atof(val));
+					}
+				break;
+				
 				case 'P':
 					//Set Polar
 					if (*(ptr+1) == 'O' &&  *(ptr+2) == 'L') {
