@@ -43,10 +43,6 @@
 
 int connfd = 0;
 
-//this is the value to be synthesised: In vario mode it's the TE compensated
-//climb/sink value, in STF it is a value correlating to the difference of STF,
-//and current airspeed
-
 int g_debug=0;
 
 int g_foreground=0;
@@ -56,6 +52,10 @@ FILE *fp_config=NULL;
 
 extern t_vario_config vario_config[2];
 extern enum e_vario_mode vario_mode;
+
+//this is the value to be synthesised: In vario mode it's the TE compensated
+//climb/sink value, in STF it is a value correlating to the difference of STF,
+//and current airspeed
 extern float audio_val;
 
 pthread_t tid_audio_update;
