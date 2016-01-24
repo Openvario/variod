@@ -272,6 +272,7 @@ int main(int argc, char *argv[])
 					set_audio_val(sensors.e);
 				break;
 				case stf:
+					printf("in STF mode: \n%3f,%3f,%3f,%3f\n", sensors.e, sensors.s/3.6, v_sink_net, getSTF(v_sink_net));
           v_sink_net=getNet( -sensors.e, sensors.s/3.6);
 					set_audio_val((sensors.s/3.6)-getSTF(v_sink_net));
 				break;
