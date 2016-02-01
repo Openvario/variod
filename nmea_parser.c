@@ -48,7 +48,7 @@ void parse_NMEA_command(char* message){
 	char buffer[100];
 	char delimiter[]=",*";
 	char *ptr;
-  t_polar polar;
+  t_polar pol;
 	
 	// copy string and initialize strtok function
 	strncpy(buffer, message, strlen(message));
@@ -109,17 +109,17 @@ void parse_NMEA_command(char* message){
 						ptr = strtok(NULL, delimiter);
 						val = (char *) malloc(strlen(ptr));
 						strncpy(val,ptr,strlen(ptr));
-						polar.a=atof(val);
+						pol.a=atof(val);
 						ptr = strtok(NULL, delimiter);
 						strncpy(val,ptr,strlen(ptr));
-						polar.b=atof(val);
+						pol.b=atof(val);
 						ptr = strtok(NULL, delimiter);
 						strncpy(val,ptr,strlen(ptr));
-						polar.c=atof(val);
+						pol.c=atof(val);
 						ptr = strtok(NULL, delimiter);
 						strncpy(val,ptr,strlen(ptr));
-						polar.w=atof(val);
-						setPolar(polar.a, polar.b, polar.c, polar.w);
+						pol.w=atof(val);
+						setPolar(pol.a, pol.b, pol.c, pol.w);
 					}
 				break;
 

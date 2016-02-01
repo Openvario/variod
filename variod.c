@@ -119,6 +119,7 @@ int main(int argc, char *argv[])
 	// init vario config structure
 	init_vario_config();
   setMC(1.0);
+	setPolar(-0.000164,0.025714,-1.668750,355);
 
 	// read config file
 	// get config file options
@@ -272,8 +273,9 @@ int main(int argc, char *argv[])
 					set_audio_val(sensors.e);
 				break;
 				case stf:
-					printf("in STF mode: \n%3f,%3f,%3f,%3f\n", sensors.e, sensors.s/3.6, v_sink_net, getSTF(v_sink_net));
-          v_sink_net=getNet( -sensors.e, sensors.s/3.6);
+					ddebug_print("in STF mode: \n%3f,%3f,%3f,%3f\n", sensors.e, sensors.s/3.6, v_sink_net, getSTF(v_sink_net));
+          
+					v_sink_net=getNet( -sensors.e, sensors.s/3.6);
 					set_audio_val((sensors.s/3.6)-getSTF(v_sink_net));
 				break;
 			}

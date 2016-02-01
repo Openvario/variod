@@ -1,10 +1,12 @@
 #include "stf.h"
+
 float mc_val;
 t_polar polar;
 float ballast;
 float degradation;
 
 float getSTF(float v_sink){
+//	ddebug_print ("getSTF, Polar: %3f, %3f, %3f, %3f\n", polar.a, polar.b, polar.c, polar.w);
   return sqrt((polar.c+mc_val+v_sink)/polar.a);
 }
 

@@ -2,6 +2,7 @@
 #define SPEEDTOFLY
 
 #include <math.h>
+#include <stdio.h>
 	      
 typedef struct{
   float a, b, c;
