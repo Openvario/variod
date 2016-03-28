@@ -26,14 +26,14 @@
 #define STF_DEADBAND_LOW -2.5  
 #define STF_DEADBAND_HIGH 2.5  /*DEADBAND: Vario remains silent for DEADBAND_LOW < TE value < DEADBAND_HIGH */
 #define STF_PULSE_LENGTH  12288 /*LENGTH of PULSE (PAUSE) for positive values, in samples*/
-#define STF_PULSE_LENGTH_GAIN  0.4 /*PULSES get shorter with higher values*/
+#define STF_PULSE_LENGTH_GAIN  0.2 /*PULSES get shorter with higher values*/
 #define STF_PULSE_DUTY  2.6 /*Pulse duty cycle 2*PI == 100%*/
-#define STF_PULSE_RISE 0.3 /*Timing for rising edge of pulse (Fade-In)*/
-#define STF_PULSE_FALL 0.3 /*Timing for falling edge of pulse (Fade-Out)*/
+#define STF_PULSE_RISE 0.1 /*Timing for rising edge of pulse (Fade-In)*/
+#define STF_PULSE_FALL 0.1 /*Timing for falling edge of pulse (Fade-Out)*/
 #define STF_BASE_FREQ_POS 400   /*BASE frequency for positive TE values in Hz*/
 #define STF_BASE_FREQ_NEG 400  /*BASE frequency for negative TE values in Hz*/
-#define STF_FREQ_GAIN_POS 70
-#define STF_FREQ_GAIN_NEG 0.3
+#define STF_FREQ_GAIN_POS 30
+#define STF_FREQ_GAIN_NEG 0.1
 
 enum e_vario_mode{
   vario = 0,

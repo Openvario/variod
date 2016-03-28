@@ -18,5 +18,6 @@
 */
 
 #include "audiovario.h"
+#include "stf.h"
 
-int cfgfile_parser(FILE *, t_vario_config *);
+int cfgfile_parser(FILE *, t_vario_config *, t_polar *);

@@ -8,9 +8,9 @@ extern FILE *fp_console;
 void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 { 
 	char *val;
-	char buffer[100];
+	char buffer[2001];
 	char delimiter[]=",*";
-	char *ptr;
+	char *ptr=NULL;
 	
 	// copy string and initialize strtok function
 	strncpy(buffer, message, strlen(message));
@@ -34,6 +34,14 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 			sensors->e = atof(val);
 			break;
 			
+			case 'Q':
+			// Airspeed value
+			// get next value
+			ptr = strtok(NULL, delimiter);
+			val = (char *) malloc(strlen(ptr));
+			strncpy(val,ptr,strlen(ptr));
+			sensors->q = atof(val);
+			break;
 			default:
 			break;
 		}

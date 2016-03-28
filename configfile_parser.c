@@ -23,11 +23,12 @@
 
 #include "configfile_parser.h"
 #include "audiovario.h"
+#include "stf.h"
 
 extern int g_debug;
 extern FILE *fp_console;
 
-int cfgfile_parser(FILE *fp, t_vario_config *vario_config)
+int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 {
 	char line[70];
 	char tmp[20];
@@ -190,6 +191,27 @@ int cfgfile_parser(FILE *fp, t_vario_config *vario_config)
 				{
 					// get config data
 					sscanf(line, "%s %f", tmp, &(vario_config[stf].freq_gain_neg));	
+				}
+				// check for polar values  
+				if (strcmp(tmp,"polar_a") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(polar->a));
+				}
+				if (strcmp(tmp,"polar_b") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(polar->b));
+				}
+				if (strcmp(tmp,"polar_c") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(polar->c));
+				}
+				if (strcmp(tmp,"polar_w") == 0)
+				{
+					// get config data
+					sscanf(line, "%s %f", tmp, &(polar->w));
 				}
 			}
 		}

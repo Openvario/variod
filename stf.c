@@ -1,16 +1,29 @@
 #include "stf.h"
+#include <stdio.h>
+
 float mc_val;
 t_polar polar;
 float ballast;
 float degradation;
 
 float getSTF(float v_sink){
-  return sqrt((polar.c+mc_val+v_sink)/polar.a);
+	//printf("polar: %f,%f,%f, mcc: %f\n", polar.a, polar.b, polar.c, mc_val);
+	float stfsq, speed;
+	stfsq = (polar.c+mc_val+v_sink)/polar.a;
+	speed=(stfsq > 0)? sqrt(stfsq):0;
+
+  	return speed/3.6;
 }
 
 
-float getNet(float v_sink, float tas){
-	return v_sink-(polar.a*tas*tas+polar.b*tas+polar.c);
+float getNet(float v_sink, float ias){
+	//printf("polar: %f,%f,%f, mcc: %f\n", polar.a, polar.b, polar.c, mc_val);
+	ias*=3.6;
+	return v_sink-(polar.a*ias*ias+polar.b*ias+polar.c);
+}
+
+float getIAS(float q){
+	return sqrt(2*q / RHO);
 }
 
 void setMC(float mc){
@@ -29,4 +42,8 @@ void setBallast(float b){
 
 void setDegradation(float d){
 	degradation=d;
+}
+
+void initSTF(){
+ setPolar(POL_A,POL_B,POL_C,POL_W);
 }

@@ -43,9 +43,9 @@
 
 int connfd = 0;
 
-int g_debug=0;
+int g_debug=2;
 
-int g_foreground=0;
+int g_foreground=1;
 
 FILE *fp_console=NULL;
 FILE *fp_config=NULL;
@@ -95,12 +95,19 @@ void print_runtime_config(t_vario_config *vario_config)
 	fprintf(fp_console,"Runtime Configuration:\n");
 	fprintf(fp_console,"----------------------\n");
 	fprintf(fp_console,"Vario:\n");
-	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config->deadband_low);
-	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config->deadband_high);
-	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config->pulse_length);
-	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config->pulse_length_gain);
-	fprintf(fp_console,"  Base Frequency Positive:\t%d\n",vario_config->base_freq_pos);
-	fprintf(fp_console,"  Base Frequency Negative:\t%d\n",vario_config->base_freq_neg);
+	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config[vario].deadband_low);
+	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config[vario].deadband_high);
+	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config[vario].pulse_length);
+	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[vario].pulse_length_gain);
+	fprintf(fp_console,"  Base Frequency Positive:\t%d\n",vario_config[vario].base_freq_pos);
+	fprintf(fp_console,"  Base Frequency Negative:\t%d\n",vario_config[vario].base_freq_neg);
+	fprintf(fp_console,"Speed to fly:\n");
+	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config[stf].deadband_low);
+	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config[stf].deadband_high);
+	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config[stf].pulse_length);
+	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[stf].pulse_length_gain);
+	fprintf(fp_console,"  Base Frequency Positive:\t%d\n",vario_config[stf].base_freq_pos);
+	fprintf(fp_console,"  Base Frequency Negative:\t%d\n",vario_config[stf].base_freq_neg);
 	fprintf(fp_console,"=========================================================================\n");	
 }
 
@@ -111,10 +118,11 @@ int main(int argc, char *argv[])
 	int xcsoar_sock;
 	struct sockaddr_in server, s_xcsoar;
 	int c , read_size;
-	char client_message[2000];
+	char client_message[2001];
 	int err;
 	int nFlags;
 	t_sensor_context sensors;
+	t_polar polar;
  	float v_sink_net;
 
 	// for daemonizing
@@ -128,13 +136,21 @@ int main(int argc, char *argv[])
 	signal(SIGPIPE, SIG_IGN);
 	// init vario config structure
 	init_vario_config();
+	//set Polar to default values (ASW24)
+	polar.a= POL_A; 
+	polar.b=POL_B; 
+	polar.c=POL_C; 
+	polar.w=POL_W;
+
 	setMC(1.0);
 
 	// read config file
 	// get config file options
 	if (fp_config != NULL)
-		cfgfile_parser(fp_config, &vario_config[vario_mode]);
+		cfgfile_parser(fp_config, &vario_config[vario_mode],&(polar));
 	
+	setPolar(polar.a,polar.b,polar.c,polar.w);
+
 	// setup server
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (listenfd == -1)
@@ -260,7 +276,7 @@ int main(int argc, char *argv[])
 		wait_for_XCSoar(xcsoar_sock, (struct sockaddr*)&s_xcsoar);
 		// make socket to XCsoar non-blocking
 		fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
-		
+
 		//enable vario sound
 		vario_unmute();	
 		
@@ -271,14 +287,22 @@ int main(int argc, char *argv[])
 			client_message[read_size] = '\0';
 
 			parse_NMEA_sensor(client_message, &sensors);
+			
 			//get the TE value from the message
 			switch(vario_mode){
 				case vario: 
 					set_audio_val(sensors.e);
 				break;
 				case stf:
-					v_sink_net=getNet( -sensors.e, sensors.s/3.6);
-					set_audio_val((sensors.s/3.6)-getSTF(v_sink_net));
+					//sensors.s=100;
+					float ias = getIAS(sensors.q);
+					
+					v_sink_net=getNet( -sensors.e, ias);
+					printf ("sink_net: %f, ias: %f,  getstf: %f\n", v_sink_net,ias, getSTF(v_sink_net) );
+					printf ("audioval %f\n",getSTF(v_sink_net)-ias );
+
+
+					set_audio_val(ias-getSTF(v_sink_net));
 				break;
 			}
 			//Send the message back to client

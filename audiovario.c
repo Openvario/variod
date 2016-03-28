@@ -145,6 +145,7 @@ void* update_audio_vario(void *arg)
 
 		if ((size_t)avail > BUFFER_SIZE) avail= (snd_pcm_sframes_t) BUFFER_SIZE;
 		synthesise_vario(audio_val, pcm_buffer, (size_t)avail, &vario_config[vario_mode]);
+		//printf("AUDIOVAL: %f\n", audio_val);
 
 		snd_pcm_writei(pcm_handle, &pcm_buffer, avail);
 		snd_pcm_wait(pcm_handle, 100 );
