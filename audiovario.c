@@ -33,6 +33,14 @@ void toggle_mute(){
   mute=!mute;
 }
 
+void vario_mute(){
+  mute=true;
+}
+
+void vario_unmute(){
+  mute=false;
+}
+
 void init_vario_config()
 {
 	// init config struct

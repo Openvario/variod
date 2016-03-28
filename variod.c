@@ -79,7 +79,15 @@ void INThandler(int sig)
 	close(connfd);
 	exit(0);
 }
-     
+    
+static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar){
+	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
+		fprintf(stderr, "failed to connect, trying again\n");
+		fflush(stdout);
+		sleep(1);
+	}
+}
+
 void print_runtime_config(t_vario_config *vario_config)
 {
 	// print actual used config
@@ -106,8 +114,8 @@ int main(int argc, char *argv[])
 	char client_message[2000];
 	int err;
 	int nFlags;
-  t_sensor_context sensors;
-  float v_sink_net;
+	t_sensor_context sensors;
+ 	float v_sink_net;
 
 	// for daemonizing
 	pid_t pid;
@@ -116,9 +124,11 @@ int main(int argc, char *argv[])
 	//parse command line arguments
 	cmdline_parser(argc, argv);
 	
+	//ignore sigpipe (i.e. XCSoar went offline)
+	signal(SIGPIPE, SIG_IGN);
 	// init vario config structure
 	init_vario_config();
-  setMC(1.0);
+	setMC(1.0);
 
 	// read config file
 	// get config file options
@@ -204,7 +214,7 @@ int main(int argc, char *argv[])
 		fp_console = fopen("variod.log","w+");
 		setbuf(fp_console, NULL);
 		stderr = fp_console;
-  }
+	}
 	
 	// all filepointers setup -> print config
 	print_runtime_config(&vario_config[vario_mode]);
@@ -247,17 +257,12 @@ int main(int argc, char *argv[])
 		s_xcsoar.sin_port = htons(4352);
 
 		// try to connect to XCSoar
-		while (connect(xcsoar_sock, (struct sockaddr *)&s_xcsoar, sizeof(s_xcsoar)) < 0) {
-			fprintf(stderr, "failed to connect, trying again\n");
-			fflush(stdout);
-			sleep(1);
-		}
-		
-		//enable vario sound
-		toggle_mute();	
-		
+		wait_for_XCSoar(xcsoar_sock, (struct sockaddr*)&s_xcsoar);
 		// make socket to XCsoar non-blocking
 		fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
+		
+		//enable vario sound
+		vario_unmute();	
 		
 		//Receive a message from sensord and forward to XCsoar
 		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
@@ -265,14 +270,14 @@ int main(int argc, char *argv[])
 			// terminate received buffer
 			client_message[read_size] = '\0';
 
-      parse_NMEA_sensor(client_message, &sensors);
+			parse_NMEA_sensor(client_message, &sensors);
 			//get the TE value from the message
 			switch(vario_mode){
 				case vario: 
 					set_audio_val(sensors.e);
 				break;
 				case stf:
-          v_sink_net=getNet( -sensors.e, sensors.s/3.6);
+					v_sink_net=getNet( -sensors.e, sensors.s/3.6);
 					set_audio_val((sensors.s/3.6)-getSTF(v_sink_net));
 				break;
 			}
@@ -281,8 +286,27 @@ int main(int argc, char *argv[])
 
 			// Send NMEA string via socket to XCSoar
 			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
-				fprintf(stderr, "send failed\n");
-			
+			{	
+				if (errno==EPIPE){
+					fprintf(stderr,"XCSoar went offline, waiting\n");
+
+					//reset socket
+					close(xcsoar_sock);
+					vario_mute();
+					xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
+					if (xcsoar_sock == -1)
+						fprintf(stderr, "could not create socket\n");
+					
+					wait_for_XCSoar(xcsoar_sock,(struct sockaddr*)&s_xcsoar);
+					
+					// make socket to XCsoar non-blocking
+					fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
+					break;
+
+				} else {
+					fprintf(stderr, "send failed\n");
+				}
+			}		
 			// check if there is communication from XCSoar to us
 			if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
 			{
