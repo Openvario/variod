@@ -45,7 +45,7 @@ int connfd = 0;
 
 int g_debug=2;
 
-int g_foreground=1;
+int g_foreground=0;
 
 FILE *fp_console=NULL;
 FILE *fp_config=NULL;
@@ -71,6 +71,7 @@ pthread_t tid_volume_control;
 * @date 17.04.2014 born
 *
 */ 
+
 void INThandler(int sig)
 {
 	signal(sig, SIG_IGN);
@@ -86,6 +87,22 @@ static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar){
 		fflush(stdout);
 		sleep(1);
 	}
+}
+
+void add_checksum(char* msg){
+	int i=1;
+	int cs=0;
+	int len;
+
+	len= strlen(msg);
+
+	while (i<len && msg[i]!='*'){
+		cs ^= msg[i];	
+		i++;
+	}
+		
+	sprintf((char*) (msg+len), "%x",cs);
+	
 }
 
 void print_runtime_config(t_vario_config *vario_config)
@@ -123,7 +140,7 @@ int main(int argc, char *argv[])
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
- 	float v_sink_net;
+ 	float v_sink_net,ias;
 
 	// for daemonizing
 	pid_t pid;
@@ -289,26 +306,26 @@ int main(int argc, char *argv[])
 			parse_NMEA_sensor(client_message, &sensors);
 			
 			//get the TE value from the message
+			ias = getIAS(sensors.q);
 			switch(vario_mode){
 				case vario: 
 					set_audio_val(sensors.e);
 				break;
 				case stf:
 					//sensors.s=100;
-					float ias = getIAS(sensors.q);
 					
 					v_sink_net=getNet( -sensors.e, ias);
-					printf ("sink_net: %f, ias: %f,  getstf: %f\n", v_sink_net,ias, getSTF(v_sink_net) );
-					printf ("audioval %f\n",getSTF(v_sink_net)-ias );
-
 
 					set_audio_val(ias-getSTF(v_sink_net));
 				break;
 			}
 			//Send the message back to client
 			//printf("SendNMEA: %s",client_message);
-
 			// Send NMEA string via socket to XCSoar
+/*			sprintf((char*)(client_message+strlen(client_message)-4),",I,%+3.2f*",(ias*3.6));
+			add_checksum(client_message);
+*/
+			//printf("SendNMEA: %s\n",client_message);
 			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
 			{	
 				if (errno==EPIPE){
@@ -330,7 +347,7 @@ int main(int argc, char *argv[])
 				} else {
 					fprintf(stderr, "send failed\n");
 				}
-			}		
+			}	
 			// check if there is communication from XCSoar to us
 			if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
 			{
