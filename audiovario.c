@@ -74,7 +74,6 @@ float change_volume(float delta){
   if (volume<0) volume=0;
   if (volume>100) volume=100;
 
-  printf("New Volume: %f\n", volume);
   return volume;
 }
 
