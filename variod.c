@@ -45,7 +45,7 @@ int connfd = 0;
 
 int g_debug=2;
 
-int g_foreground=0;
+int g_foreground=1;
 
 FILE *fp_console=NULL;
 FILE *fp_config=NULL;

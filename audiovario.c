@@ -118,7 +118,6 @@ void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_c
 	   else
 	   {
          freq= vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg);
-         pcm_buffer[j]=327.67*volume*triangle(float(synth_ptr)*m_pi*2.0/sample_rate*freq);
          pcm_buffer[j]=327.67*volume*triangle(float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr);
        }
 
@@ -126,7 +125,10 @@ void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_c
      synth_ptr++;
    }
    phase_ptr=float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr;
+   phase_ptr= fmodf(phase_ptr,2*m_pi);
+   
    pulse_phase_ptr=float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr;
+   pulse_phase_ptr= fmodf(pulse_phase_ptr,2*m_pi);
    
 }
 

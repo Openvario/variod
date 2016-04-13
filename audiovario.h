@@ -9,7 +9,7 @@
 #include <alsa/asoundlib.h>
 	      
 #define BUFFER_SIZE 4096
-#define m_pi 3.1415 //M_PI doesn't work, need to check why....
+#define m_pi 3.14159265 //M_PI doesn't work, need to check why....
 
 #define DEADBAND_LOW -0.0  
 #define DEADBAND_HIGH 0.0  /*DEADBAND: Vario remains silent for DEADBAND_LOW < TE value < DEADBAND_HIGH */
