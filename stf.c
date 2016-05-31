@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 float mc_val;
-t_polar polar;
+t_polar polar, ideal_polar;
 float ballast;
 float degradation;
 
@@ -30,18 +30,30 @@ void setMC(float mc){
   mc_val=mc; 
 }
 void setPolar(float a, float b, float c, float w){
-  polar.a=a;
-  polar.b=b;
-  polar.c=c;
-  polar.w=w;
+  ideal_polar.a=a;
+  ideal_polar.b=b;
+  ideal_polar.c=c;
+  ideal_polar.w=w;
 } 
+
+static void updateRealPolar(){
+  float loading_factor= (ideal_polar.w >0)? sqrt((ideal_polar.w + ballast) / ideal_polar.w) : 1;
+  float deg_inv = (degradation>0)? 1.0/degradation : 1;
+
+  polar.a= deg_inv * ideal_polar.a / loading_factor;
+  polar.b= deg_inv * ideal_polar.b;
+  polar.c= deg_inv * ideal_polar.c / loading_factor;
+}
+
 
 void setBallast(float b){
 	ballast=b;
+	updateRealPolar();
 }
 
 void setDegradation(float d){
 	degradation=d;
+	updateRealPolar();
 }
 
 void initSTF(){
