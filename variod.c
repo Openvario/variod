@@ -315,8 +315,7 @@ int main(int argc, char *argv[])
 					//sensors.s=100;
 					
 					v_sink_net=getNet( -sensors.e, ias);
-
-					set_audio_val(ias-getSTF(v_sink_net));
+					set_audio_val(sqrt(ias-getSTF(v_sink_net)));
 				break;
 			}
 			//Send the message back to client

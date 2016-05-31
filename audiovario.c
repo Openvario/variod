@@ -108,17 +108,15 @@ void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_c
    for(j=0;j<frames_n;j++) {
      if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) pcm_buffer[j]=0;
      else {
-       if (val > 0)
-	   {
-		 pulse_freq = (val > 0.5)? float(sample_rate)/(vario_config->pulse_length/(val*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2)));
+       if (val > 0){
+         pulse_freq = (val > 0.5)? float(sample_rate)/(vario_config->pulse_length/(val*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2)));
          freq= vario_config->base_freq_pos+(val*vario_config->freq_gain_pos);
          pcm_buffer[j]=pulse_syn( float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr, vario_config->pulse_rise,vario_config->pulse_fall,vario_config->pulse_duty) * 327.67*volume*triangle(float(j)*m_pi*2.0/sample_rate*freq+phase_ptr);
        }
-	   else
-	   {
+	   else{
          freq= vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg);
          pcm_buffer[j]=327.67*volume*triangle(float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr);
-       }
+      }
 
      }
      synth_ptr++;
@@ -145,7 +143,7 @@ void* update_audio_vario(void *arg)
 		}
 
 		if ((size_t)avail > BUFFER_SIZE) avail= (snd_pcm_sframes_t) BUFFER_SIZE;
-		synthesise_vario(audio_val, pcm_buffer, (size_t)avail, &vario_config[vario_mode]);
+		synthesise_vario(audio_val, pcm_buffer, (size_t)avail, &(vario_config[vario_mode]));
 		//printf("AUDIOVAL: %f\n", audio_val);
 
 		snd_pcm_writei(pcm_handle, &pcm_buffer, avail);
