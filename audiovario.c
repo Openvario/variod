@@ -71,6 +71,7 @@ void init_vario_config()
 
 float change_volume(float delta){
   volume+=delta;
+	vario_unmute();
   if (volume<0) volume=0;
   if (volume>100) volume=100;
 
