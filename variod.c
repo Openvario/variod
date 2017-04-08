@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
- 	float v_sink_net,ias;
+ 	float v_sink_net,ias, stf_diff;
 
 	// for daemonizing
 	pid_t pid;
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "accept failed");
 			return 1;
 		}
-	
+
 		fprintf(fp_console, "Connection accepted\n");	
 		
 		// Socket is connected
@@ -315,7 +315,11 @@ int main(int argc, char *argv[])
 					//sensors.s=100;
 					
 					v_sink_net=getNet( -sensors.e, ias);
-					set_audio_val(sqrt(ias-getSTF(v_sink_net)));
+					stf_diff=ias-getSTF(v_sink_net);
+				
+					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
+					else  set_audio_val(-sqrt(-stf_diff));
+
 				break;
 			}
 			//Send the message back to client
