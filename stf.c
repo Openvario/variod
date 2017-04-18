@@ -16,11 +16,17 @@ float getSTF(float v_sink){
 }
 
 
+float getPlaneSink(float ias){
+	return polar.a*ias*ias+polar.b*ias+polar.c;
+}
+
 float getNet(float v_sink, float ias){
 	//printf("polar: %f,%f,%f, mcc: %f\n", polar.a, polar.b, polar.c, mc_val);
 	ias*=3.6;
-	return v_sink-(polar.a*ias*ias+polar.b*ias+polar.c);
+	return v_sink-getPlaneSink(ias);
 }
+
+
 
 float getIAS(float q){
 	return sqrt(2*q / RHO);

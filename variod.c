@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
- 	float v_sink_net,ias, stf_diff;
+ 	float v_sink_net, ias, stf_diff;
 
 	// for daemonizing
 	pid_t pid;
@@ -313,12 +313,17 @@ int main(int argc, char *argv[])
 				break;
 				case stf:
 					//sensors.s=100;
-					
+					/*
 					v_sink_net=getNet( -sensors.e, ias);
 					stf_diff=ias-getSTF(v_sink_net);
 				
 					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
-					else  set_audio_val(-sqrt(-stf_diff));
+    			else  set_audio_val(-sqrt(-stf_diff));*/
+
+					v_sink_net=getNet( -sensors.e, ias);
+					stf_diff=getPlaneSink(ias) - getPlaneSink(getSTF(v_sink_net));  
+    			set_audio_val(stf_diff);
+
 
 				break;
 			}

@@ -16,6 +16,7 @@ typedef struct{
 
 
 float getSTF(float v_sink);
+float getPlaneSink(float ias);
 float getNet(float v_sink, float ias);
 float getIAS(float q);
 void setMC(float mc); 
