@@ -131,6 +131,7 @@ void print_runtime_config(t_vario_config *vario_config)
 int main(int argc, char *argv[])
 {
 	int listenfd = 0;
+
 	// socket communication
 	int xcsoar_sock;
 	struct sockaddr_in server, s_xcsoar;
@@ -151,29 +152,31 @@ int main(int argc, char *argv[])
 	
 	//ignore sigpipe (i.e. XCSoar went offline)
 	signal(SIGPIPE, SIG_IGN);
+	
 	// init vario config structure
 	init_vario_config();
+	initSTF();
+
 	//set Polar to default values (ASW24)
-	polar.a= POL_A; 
-	polar.b=POL_B; 
-	polar.c=POL_C; 
-	polar.w=POL_W;
+	polar.a = POL_A; 
+	polar.b = POL_B; 
+	polar.c = POL_C; 
+	polar.w = POL_W;
 
 	setMC(1.0);
 
 	// read config file
 	// get config file options
 	if (fp_config != NULL)
-		cfgfile_parser(fp_config, &vario_config[vario_mode],&(polar));
+		cfgfile_parser(fp_config, (t_vario_config*) &vario_config,&polar);
 	
 	setPolar(polar.a,polar.b,polar.c,polar.w);
-
 	// setup server
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (listenfd == -1)
-    {
-        printf("Could not create socket");
-    }
+	{
+		printf("Could not create socket");
+	}
 	printf("Socket created ...\n");	
 	
 	// set server address and port for listening
@@ -186,12 +189,12 @@ int main(int argc, char *argv[])
 	fcntl(listenfd, F_SETFD, nFlags);
 
 	//Bind listening socket
-    if( bind(listenfd,(struct sockaddr *)&server , sizeof(server)) < 0)
-    {
-        //print the error message
-        printf("bind failed. Error");
-        return 1;
-    }
+	if( bind(listenfd,(struct sockaddr *)&server , sizeof(server)) < 0)
+	{
+		//print the error message
+		printf("bind failed. Error");
+		return 1;
+	}
 	
 	listen(listenfd, 10); 
 	
@@ -200,7 +203,6 @@ int main(int argc, char *argv[])
 	{
 		// create CTRL-C handler
 		//signal(SIGINT, INThandler);
-		
 		// open console again, but as file_pointer
 		fp_console = stdout;
 		stderr = stdout;
@@ -313,16 +315,12 @@ int main(int argc, char *argv[])
 				break;
 				case stf:
 					//sensors.s=100;
-					/*
+					
 					v_sink_net=getNet( -sensors.e, ias);
 					stf_diff=ias-getSTF(v_sink_net);
-				
-					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
-    			else  set_audio_val(-sqrt(-stf_diff));*/
 
-					v_sink_net=getNet( -sensors.e, ias);
-					stf_diff=getPlaneSink(ias) - getPlaneSink(getSTF(v_sink_net));  
-    			set_audio_val(stf_diff);
+					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
+					else  set_audio_val(-sqrt(-stf_diff));
 
 
 				break;
@@ -330,10 +328,6 @@ int main(int argc, char *argv[])
 			//Send the message back to client
 			//printf("SendNMEA: %s",client_message);
 			// Send NMEA string via socket to XCSoar
-/*			sprintf((char*)(client_message+strlen(client_message)-4),",I,%+3.2f*",(ias*3.6));
-			add_checksum(client_message);
-*/
-			//printf("SendNMEA: %s\n",client_message);
 			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
 			{	
 				if (errno==EPIPE){

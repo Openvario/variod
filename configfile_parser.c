@@ -30,8 +30,8 @@ extern FILE *fp_console;
 
 int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 {
-	char line[70];
-	char tmp[20];
+	char line[128];
+	char tmp[128];
 		
 	// is config file used ??
 	if (fp)

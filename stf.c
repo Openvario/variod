@@ -7,7 +7,6 @@ float ballast;
 float degradation;
 
 float getSTF(float v_sink){
-	//printf("polar: %f,%f,%f, mcc: %f\n", polar.a, polar.b, polar.c, mc_val);
 	float stfsq, speed;
 	stfsq = (polar.c+mc_val+v_sink)/polar.a;
 	speed=(stfsq > 0)? sqrt(stfsq):0;
@@ -35,12 +34,6 @@ float getIAS(float q){
 void setMC(float mc){
   mc_val=mc; 
 }
-void setPolar(float a, float b, float c, float w){
-  ideal_polar.a=a;
-  ideal_polar.b=b;
-  ideal_polar.c=c;
-  ideal_polar.w=w;
-} 
 
 static void updateRealPolar(){
   float loading_factor= (ideal_polar.w >0)? sqrt((ideal_polar.w + ballast) / ideal_polar.w) : 1;
@@ -51,6 +44,14 @@ static void updateRealPolar(){
   polar.c= deg_inv * ideal_polar.c / loading_factor;
 }
 
+
+void setPolar(float a, float b, float c, float w){
+  ideal_polar.a=a;
+  ideal_polar.b=b;
+  ideal_polar.c=c;
+  ideal_polar.w=w;
+  updateRealPolar();
+} 
 
 void setBallast(float b){
 	ballast=b;
