@@ -137,7 +137,6 @@ int main(int argc, char *argv[])
 	struct sockaddr_in server, s_xcsoar;
 	int c , read_size;
 	char client_message[2001];
-	int err;
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
@@ -257,14 +256,6 @@ int main(int argc, char *argv[])
 	// setup and start pcm player
 	start_pcm();
 		
-	// create alsa update thread
-	err = pthread_create(&tid_audio_update, NULL, &update_audio_vario, NULL);
-	if (err != 0)	{
-		fprintf(stderr, "\ncan't create thread :[%s]", strerror(err));
-	}else{
-		fprintf(fp_console, "\n Thread 'update_audio_vario' created successfully\n");
-	}
-	
 	while(1) {
 		//Accept and incoming connection
 		fprintf(fp_console,"Waiting for incoming connections...\n");

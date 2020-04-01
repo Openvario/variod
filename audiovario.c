@@ -221,18 +221,3 @@ void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) 
 void stream_success_cb(pa_stream *stream, int success, void *userdata) {
     return;
 }
-
-int main (int argc, char *argv[])
-{
-  init_vario_config();
-  change_volume(50);
-  vario_unmute();
-  start_pcm();
-  for (int i=-5; i<6; i++){
-    set_audio_val(i);
-    printf("vario sound at %d m/s\n",i);
-    sleep(3);
-  }
-
-  return 0;
-}

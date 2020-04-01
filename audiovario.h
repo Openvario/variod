@@ -71,7 +71,6 @@ void vario_unmute();
 float change_volume(float delta);
 float triangle(float phase );
 void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config);
-void* update_audio_vario(void *);
 void start_pcm();
 void stop_pcm();
 void init_vario_config();
