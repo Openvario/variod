@@ -22,7 +22,7 @@ doc:
 	doxygen
 	
 variod: $(OBJ)
-	$(CXX) $(LIBS) -g -o $@ $^
+	$(CXX) -g -o $@ $^ $(LIBS)
 	
 install: variod
 	install -D variod $(BINDIR)/$(EXECUTABLE)
