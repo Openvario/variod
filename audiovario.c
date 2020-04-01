@@ -1,11 +1,9 @@
 #include "audiovario.h" 
 
 
-snd_pcm_t *pcm_handle;
-int16_t pcm_buffer[BUFFER_SIZE];
-unsigned int sample_rate=44100;
-snd_pcm_uframes_t period_size;
-snd_pcm_uframes_t buffer_size;
+int16_t buffer[BUFFER_SIZE];
+unsigned int sample_rate=RATE;
+
 int synth_ptr=0;
 bool mute=true;
 float volume=50.0;
@@ -56,7 +54,7 @@ void init_vario_config()
 	vario_config[vario].freq_gain_pos = FREQ_GAIN_POS;
 	vario_config[vario].freq_gain_neg = FREQ_GAIN_NEG;
 	
-  vario_config[stf].deadband_low = STF_DEADBAND_LOW;
+	vario_config[stf].deadband_low = STF_DEADBAND_LOW;
 	vario_config[stf].deadband_high = STF_DEADBAND_HIGH;
 	vario_config[stf].pulse_length = STF_PULSE_LENGTH;
 	vario_config[stf].pulse_length_gain = STF_PULSE_LENGTH_GAIN;
@@ -129,84 +127,112 @@ void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_c
    pulse_phase_ptr= fmodf(pulse_phase_ptr,2*m_pi);
    
 }
-
-void* update_audio_vario(void *arg)
-{
-  snd_pcm_sframes_t avail;
-
-	while(1)  
-	{
-		if ((avail = snd_pcm_avail_update(pcm_handle)) < 0) {
-			if (avail == -EPIPE) {
-			/*underrun occured, reset the sound device*/ 					
-			snd_pcm_prepare(pcm_handle);
-			}
-		}
-
-		if ((size_t)avail > BUFFER_SIZE) avail= (snd_pcm_sframes_t) BUFFER_SIZE;
-		synthesise_vario(audio_val, pcm_buffer, (size_t)avail, &(vario_config[vario_mode]));
-		//printf("AUDIOVAL: %f\n", audio_val);
-
-		snd_pcm_writei(pcm_handle, &pcm_buffer, avail);
-		snd_pcm_wait(pcm_handle, 100 );
-	}
-}
 	      
-int start_pcm() {
+void start_pcm() {
 
-  snd_pcm_hw_params_t *hw_params;
-  snd_pcm_sw_params_t *sw_params;
-  //snd_pcm_sframes_t avail;
+    pa_threaded_mainloop *mainloop;
+    pa_mainloop_api *mainloop_api;
+    pa_context *context;
+    pa_stream *stream;
 
-  if (snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0) < 0 ||
-      snd_pcm_hw_params_malloc(&hw_params) < 0 ||   		
-      snd_pcm_hw_params_any(pcm_handle, hw_params) < 0 ||
-      snd_pcm_hw_params_set_access(pcm_handle, hw_params, 
-                                   SND_PCM_ACCESS_RW_INTERLEAVED) < 0 ||
-      snd_pcm_hw_params_set_format(pcm_handle, hw_params, 
-                                   SND_PCM_FORMAT_S16_LE) < 0 ||
-      snd_pcm_hw_params_set_rate_near(pcm_handle, 
-                                      hw_params, &sample_rate, 0) < 0 ||
-      snd_pcm_hw_params_set_channels(pcm_handle, hw_params, 1) < 0 ||
-      snd_pcm_hw_params_set_period_size_near (pcm_handle, hw_params, 
-                                              &period_size, NULL) <0 ||
-      snd_pcm_hw_params_set_buffer_size_near(pcm_handle, hw_params, 
-                                              &buffer_size) <0 ||
-      snd_pcm_hw_params (pcm_handle, hw_params) < 0) {
-    return false;
-  }
-  snd_pcm_hw_params_free(hw_params);
-  if (snd_pcm_sw_params_malloc(&sw_params) < 0 ||
-      snd_pcm_sw_params_current(pcm_handle, sw_params) < 0 ||
-      snd_pcm_sw_params_set_avail_min(pcm_handle, 
-                                       sw_params, period_size) < 0 ||
-      snd_pcm_sw_params_set_start_threshold(pcm_handle, 
-                                            sw_params, 0U) < 0 ||
-      snd_pcm_sw_params(pcm_handle, sw_params)  < 0 ||
-      snd_pcm_prepare(pcm_handle) < 0) {
-    return false;
-  }
-  snd_pcm_sw_params_free(sw_params);
-  
-  snd_pcm_start(pcm_handle);
-  snd_pcm_pause(pcm_handle,0);
-  return true;
+    mainloop = pa_threaded_mainloop_new();
+    assert(mainloop);
+    mainloop_api = pa_threaded_mainloop_get_api(mainloop);
+    context = pa_context_new(mainloop_api, "audio_vario");
+    assert(context);
+
+    pa_context_set_state_callback(context, &context_state_cb, mainloop);
+
+    pa_threaded_mainloop_lock(mainloop);
+    assert(pa_threaded_mainloop_start(mainloop) == 0);
+    assert(pa_context_connect(context, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL) == 0);
+
+    for(;;) {
+        pa_context_state_t context_state = pa_context_get_state(context);
+        assert(PA_CONTEXT_IS_GOOD(context_state));
+        if (context_state == PA_CONTEXT_READY) break;
+        pa_threaded_mainloop_wait(mainloop);
+    }
+
+    pa_sample_spec sample_specifications;
+    sample_specifications.format = FORMAT;
+    sample_specifications.rate = RATE;
+    sample_specifications.channels = 1;
+
+    pa_channel_map map;
+    pa_channel_map_init_mono(&map);
+
+    stream = pa_stream_new(context, "variod", &sample_specifications, &map);
+    pa_stream_set_state_callback(stream, stream_state_cb, mainloop);
+    pa_stream_set_write_callback(stream, stream_write_cb, mainloop);
+
+    pa_buffer_attr buffer_attr; 
+    buffer_attr.maxlength = (uint32_t) -1;
+    buffer_attr.tlength = (uint32_t) BUFFER_SIZE; //We need low latency!
+    buffer_attr.prebuf = (uint32_t) -1;
+    buffer_attr.minreq = (uint32_t) -1;
+
+    pa_stream_flags_t stream_flags;
+    stream_flags = PA_STREAM_START_CORKED | PA_STREAM_INTERPOLATE_TIMING | 
+        PA_STREAM_NOT_MONOTONIC | PA_STREAM_AUTO_TIMING_UPDATE |
+        PA_STREAM_ADJUST_LATENCY;
+
+    assert(pa_stream_connect_playback(stream, NULL, &buffer_attr, stream_flags, NULL, NULL) == 0);
+
+    for(;;) {
+        pa_stream_state_t stream_state = pa_stream_get_state(stream);
+        assert(PA_STREAM_IS_GOOD(stream_state));
+        if (stream_state == PA_STREAM_READY) break;
+        pa_threaded_mainloop_wait(mainloop);
+    }
+
+    pa_threaded_mainloop_unlock(mainloop);
+    pa_stream_cork(stream, 0, stream_success_cb, mainloop);
+    
  }
 
 
-int stop_pcm() {
-  snd_pcm_drop(pcm_handle);
-  snd_pcm_close (pcm_handle);
-  return (0);
+
+void context_state_cb(pa_context* context, void* mainloop) {
+    pa_threaded_mainloop_signal(mainloop, 0);
 }
 
-/*main (int argc, char *argv[])
-{ 
+void stream_state_cb(pa_stream *s, void *mainloop) {
+    pa_threaded_mainloop_signal(mainloop, 0);
+}
 
+void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) {
+    
+    size_t bytes_to_fill = BUFFER_SIZE*2;
+    int bytes_remaining = requested_bytes;
+    
+    while (bytes_remaining > 0) {
+
+        if (bytes_to_fill > bytes_remaining) bytes_to_fill = bytes_remaining;
+
+	synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode]));
+
+        pa_stream_write(stream, buffer, bytes_to_fill, NULL, 0LL, PA_SEEK_RELATIVE);
+
+        bytes_remaining -= bytes_to_fill;
+    }
+}
+
+void stream_success_cb(pa_stream *stream, int success, void *userdata) {
+    return;
+}
+
+int main (int argc, char *argv[])
+{
+  init_vario_config();
+  change_volume(50);
+  vario_unmute();
   start_pcm();
-  while(1) {
-  snd_pcm_wait(pcm_handle, 100 );
-  update_audio_vario(1.5);}
-  stop_pcm();
+  for (int i=-5; i<6; i++){
+    set_audio_val(i);
+    printf("vario sound at %d m/s\n",i);
+    sleep(3);
+  }
+
+  return 0;
 }
-*/
