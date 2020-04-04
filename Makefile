@@ -1,11 +1,11 @@
 # Makefile for sensord
 #Some compiler stuff and flags
-CFLAGS += -g -Wall
+CFLAGS += -g -Wall -fpermissive
 EXECUTABLE = variod
 _OBJ = audiovario.o variod.o cmdline_parser.o configfile_parser.o nmea_parser.o stf.o 
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 OBJ_CAL = $(patsubst %,$(ODIR)/%,$(_OBJ_CAL))
-LIBS = -lasound -lm -lpthread
+LIBS = -lpulse -lm -lpthread
 ODIR = obj
 BINDIR = /opt/bin/
 
@@ -22,7 +22,7 @@ doc:
 	doxygen
 	
 variod: $(OBJ)
-	$(CXX) $(LIBS) -g -o $@ $^
+	$(CXX) -g -o $@ $^ $(LIBS)
 	
 install: variod
 	install -D variod $(BINDIR)/$(EXECUTABLE)
