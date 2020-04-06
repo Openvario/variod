@@ -145,14 +145,16 @@ void start_pcm() {
 
     pa_threaded_mainloop_lock(mainloop);
     assert(pa_threaded_mainloop_start(mainloop) == 0);
-    assert(pa_context_connect(context, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL) == 0);
 
+    printf("Connecting to pulseaudio...\n");
+    assert(pa_context_connect(context, NULL, PA_CONTEXT_NOAUTOSPAWN | PA_CONTEXT_NOFAIL, NULL) == 0);
     for(;;) {
         pa_context_state_t context_state = pa_context_get_state(context);
         assert(PA_CONTEXT_IS_GOOD(context_state));
         if (context_state == PA_CONTEXT_READY) break;
         pa_threaded_mainloop_wait(mainloop);
     }
+    printf("Connection to pulseaudio established.\n");
 
     pa_sample_spec sample_specifications;
     sample_specifications.format = FORMAT;
