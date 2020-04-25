@@ -253,11 +253,11 @@ int main(int argc, char *argv[])
 	// setup and start pcm player
 	start_pcm();
 
-        // get current values for Polar, MC, ... from XCSoar
-        // since we might have started after XCSoar was running for a while
-        request_current_settings = true;
-		
 	while(1) {
+                // get current values for Polar, MC, ... from XCSoar
+                // since we might have started after XCSoar was running for a while
+                request_current_settings = true;
+                        
 		//Accept and incoming connection
 		fprintf(fp_console,"Waiting for incoming connections...\n");
 		fflush(fp_console);
