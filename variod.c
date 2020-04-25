@@ -90,26 +90,22 @@ static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar){
 }
 
 void add_checksum(char* msg){
-	int i=1;
-	int cs=0;
-	int len;
+  int cs=0;
+  int len;
 
-	len= strlen(msg);
+  len= strlen(msg);
 
-	while (i<len && msg[i]!='*'){
-		cs ^= msg[i];	
-		i++;
-	}
-		
-	sprintf((char*) (msg+len), "%x",cs);
-	
+  for (int i=1; i<len && msg[i]!='*';i++){
+    cs ^= msg[i];
+  }
+  sprintf((char*) (msg+len), "%02X\n",cs);
 }
 
 void print_runtime_config(t_vario_config *vario_config)
 {
 	// print actual used config
 	fprintf(fp_console,"=========================================================================\n");
-	fprintf(fp_console,"Runtime Configuration:\n");
+	fprintf(fp_console,"Runtime Configuration: debug level %d\n",g_debug);
 	fprintf(fp_console,"----------------------\n");
 	fprintf(fp_console,"Vario:\n");
 	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config[vario].deadband_low);
@@ -137,6 +133,7 @@ int main(int argc, char *argv[])
 	struct sockaddr_in server, s_xcsoar;
 	int c , read_size;
 	char client_message[2001];
+        bool request_current_settings = true;
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
@@ -191,7 +188,7 @@ int main(int argc, char *argv[])
 	if( bind(listenfd,(struct sockaddr *)&server , sizeof(server)) < 0)
 	{
 		//print the error message
-		printf("bind failed. Error");
+		printf("Bind failed. Error\n");
 		return 1;
 	}
 	
@@ -255,6 +252,10 @@ int main(int argc, char *argv[])
 	
 	// setup and start pcm player
 	start_pcm();
+
+        // get current values for Polar, MC, ... from XCSoar
+        // since we might have started after XCSoar was running for a while
+        request_current_settings = true;
 		
 	while(1) {
 		//Accept and incoming connection
@@ -289,7 +290,7 @@ int main(int argc, char *argv[])
 
 		//enable vario sound
 		vario_unmute();	
-		
+
 		//Receive a message from sensord and forward to XCsoar
 		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
 		{
@@ -339,10 +340,12 @@ int main(int argc, char *argv[])
 
 				} else {
 					fprintf(stderr, "send failed\n");
+                                        // we can skip a pendig request since XCSoar is not online
+                                        request_current_settings = false;
 				}
 			}	
 			// check if there is communication from XCSoar to us
-			if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
+			while ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
 			{
 				// we got some message
 				// terminate received buffer
@@ -350,11 +353,42 @@ int main(int argc, char *argv[])
 				
 				ddebug_print("Message from XCSoar: %s\n",client_message);
 
+                                char *p = client_message;
+                                // chop one message into multiple lines
+                                while (*p) {
+                                  if (*p == '\n' || *p == '\r') {
+                                    *p = '\0';
+                                    }
+                                  p += 1;
+                                  }
+
+                                int c_cntr = read_size;
+                                char *next_sentence = client_message;
+                                p  = client_message;
 				// parse message from XCSoar
-				parse_NMEA_command(client_message);	
-        	
+                                // one sentence at a time
+                                do {
+                                    parse_NMEA_command(next_sentence);	
+                                    p += (strlen(next_sentence) + 1);
+                                    c_cntr -= (strlen(next_sentence) + 1);
+                                    while ((c_cntr > 1) && (*p == '\0')) {
+                                      c_cntr -= 1;
+                                      p += 1;
+                                      }
+                                    if (c_cntr > 1) next_sentence = p;
+                                    else next_sentence = NULL;
+                                  } while (next_sentence);
+
 			}
-			
+
+                        // we might see if we need to update settings from XCSoar
+                        if (request_current_settings) {
+                          strcpy(client_message,"$POV,?,RPO,MC*"); // all we need for STF
+                          add_checksum(client_message);
+                          send(xcsoar_sock, client_message, strlen(client_message), 0);
+                          // we have triggered to send the data, now we can cancel the reques
+                          request_current_settings = false;
+                        }
 		}
 		
 		// connection dropped cleanup
@@ -363,8 +397,8 @@ int main(int argc, char *argv[])
 		
 		close(xcsoar_sock);
 		close(connfd);
-	}
-	return 0;
+       }
+       return 0;
 }
 
 

@@ -1,10 +1,11 @@
 #include "stf.h"
 #include <stdio.h>
 
-float mc_val;
+float mc_val = 1.0;
 t_polar polar, ideal_polar;
-float ballast;
-float degradation;
+bool real_polar_valid = false;
+float ballast = 1.0;
+float degradation = 1.0 ;
 
 float getSTF(float v_sink){
 	float stfsq, speed;
@@ -36,12 +37,16 @@ void setMC(float mc){
 }
 
 static void updateRealPolar(){
-  float loading_factor= (ideal_polar.w >0)? sqrt((ideal_polar.w + ballast) / ideal_polar.w) : 1;
+  // we don't use Ideal Polar and degradation and ballast
+  // if we have a Real Polar from XCSoar
+  if (real_polar_valid) return;
+
+  float loading_factor= (ballast >0)? sqrt(ballast) : 1;
   float deg_inv = (degradation>0)? 1.0/degradation : 1;
 
   polar.a= deg_inv * ideal_polar.a / loading_factor;
   polar.b= deg_inv * ideal_polar.b;
-  polar.c= deg_inv * ideal_polar.c / loading_factor;
+  polar.c= deg_inv * ideal_polar.c * loading_factor;
 }
 
 
@@ -51,6 +56,20 @@ void setPolar(float a, float b, float c, float w){
   ideal_polar.c=c;
   ideal_polar.w=w;
   updateRealPolar();
+} 
+
+void setIdealPolar(float a, float b, float c){
+  ideal_polar.a=a;
+  ideal_polar.b=b;
+  ideal_polar.c=c;
+  updateRealPolar();
+} 
+
+void setRealPolar(float a, float b, float c){
+  polar.a=a;
+  polar.b=b;
+  polar.c=c;
+  real_polar_valid = true;
 } 
 
 void setBallast(float b){

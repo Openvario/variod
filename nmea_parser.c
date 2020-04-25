@@ -92,10 +92,13 @@ void parse_NMEA_command(char* message){
 				case 'W':
 					if (*(ptr+1) == 'L') {
 						//Set Wingload/Ballast 
+                                                // we are getting total_mass / dry_mass
+                                                // we should get total_mass / reference_mass
+                                                // TODO: fix this in XCSoar
 						ptr = strtok(NULL, delimiter);
 						val = (char *) malloc(strlen(ptr));
-						strncpy(val,ptr,strlen(ptr));
-						setBallast(atof(val));
+                                                strncpy(val,ptr,strlen(ptr));
+                                                setBallast(atof(val));
 						debug_print("Get Ballast Value: %f\n",atof(val));
 					}
 				break;
@@ -111,7 +114,7 @@ void parse_NMEA_command(char* message){
 					}
 				break;
 				
-				case 'P':
+				case 'P': // UNDOCUMENTED feature
 					//Set Polar
 					if (*(ptr+1) == 'O' &&  *(ptr+2) == 'L') {
 						ptr = strtok(NULL, delimiter);
@@ -128,6 +131,46 @@ void parse_NMEA_command(char* message){
 						strncpy(val,ptr,strlen(ptr));
 						polar.w=atof(val);
 						setPolar(polar.a, polar.b, polar.c, polar.w);
+						debug_print("Get Polar POL: %f, %f, %f, %f\n",
+                                                polar.a,polar.b,polar.c,polar.w);
+					}
+				break;
+
+				case 'I':
+					//Set ideal Polar
+					if (*(ptr+1) == 'P' &&  *(ptr+2) == 'O') {
+						ptr = strtok(NULL, delimiter);
+						val = (char *) malloc(strlen(ptr));
+						strncpy(val,ptr,strlen(ptr));
+						polar.a=atof(val);
+						ptr = strtok(NULL, delimiter);
+						strncpy(val,ptr,strlen(ptr));
+						polar.b=atof(val);
+						ptr = strtok(NULL, delimiter);
+						strncpy(val,ptr,strlen(ptr));
+						polar.c=atof(val);
+						setIdealPolar(polar.a, polar.b, polar.c);
+						debug_print("Get Polar IPO: %f, %f, %f\n",
+                                                polar.a,polar.b,polar.c);
+					}
+				break;
+
+				case 'R':
+					//Set real Polar
+					if (*(ptr+1) == 'P' &&  *(ptr+2) == 'O') {
+						ptr = strtok(NULL, delimiter);
+						val = (char *) malloc(strlen(ptr));
+						strncpy(val,ptr,strlen(ptr));
+						polar.a=atof(val);
+						ptr = strtok(NULL, delimiter);
+						strncpy(val,ptr,strlen(ptr));
+						polar.b=atof(val);
+						ptr = strtok(NULL, delimiter);
+						strncpy(val,ptr,strlen(ptr));
+						polar.c=atof(val);
+						setRealPolar(polar.a, polar.b, polar.c);
+						debug_print("Get Polar RPO: %f, %f, %f\n",
+                                                polar.a,polar.b,polar.c);
 					}
 				break;
 
