@@ -129,6 +129,28 @@ void print_runtime_config(t_vario_config *vario_config)
 	fprintf(fp_console,"=========================================================================\n");	
 }
 
+int create_xcsoar_connection()
+{
+	// Open Socket for TCP/IP communication to XCSoar
+	int xcsoar_sock;
+	struct sockaddr_in s_xcsoar;
+	xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (xcsoar_sock == -1){
+		fprintf(stderr, "could not create socket\n");
+		return -1;
+	}	  
+	s_xcsoar.sin_addr.s_addr = inet_addr("127.0.0.1");
+	s_xcsoar.sin_family = AF_INET;
+	s_xcsoar.sin_port = htons(4352);
+
+	// try to connect to XCSoar
+	wait_for_XCSoar(xcsoar_sock, (struct sockaddr*)&s_xcsoar);
+	// make socket to XCsoar non-blocking
+	fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
+	return xcsoar_sock;
+
+}
+
 int main(int argc, char *argv[])
 {
 	int listenfd = 0;
@@ -262,6 +284,9 @@ int main(int argc, char *argv[])
 	
 	// setup and start pcm player
 	start_pcm();
+
+	// connect to xcsoar
+	xcsoar_sock = create_xcsoar_connection();
 		
 	while(1) {
 		//Accept and incoming connection
@@ -280,20 +305,7 @@ int main(int argc, char *argv[])
 		fprintf(fp_console, "Connection accepted\n");	
 		
 		// Socket is connected
-		// Open Socket for TCP/IP communication to XCSoar
-		xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
-		if (xcsoar_sock == -1)
-			fprintf(stderr, "could not create socket\n");
-	  
-		s_xcsoar.sin_addr.s_addr = inet_addr("127.0.0.1");
-		s_xcsoar.sin_family = AF_INET;
-		s_xcsoar.sin_port = htons(4352);
-
-		// try to connect to XCSoar
-		wait_for_XCSoar(xcsoar_sock, (struct sockaddr*)&s_xcsoar);
-		// make socket to XCsoar non-blocking
-		fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
-
+		
 		//enable vario sound
 		vario_unmute();	
 		// get current values for Polar, MC, ... from XCSoar
@@ -307,24 +319,20 @@ int main(int argc, char *argv[])
 			client_message[read_size] = '\0';
 
 			//Send the message back to client
-			//printf("SendNMEA: %s",client_message);
+			//fprintf(fp_console,"SendNMEA: %s",client_message);
 			// Send NMEA string via socket to XCSoar
-			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
+			int sendbytes;
+			sendbytes=send(xcsoar_sock, client_message, strlen(client_message), 0);
+			//fprintf (fp_console,"send command returned: %d\n",sendbytes);
+			if (sendbytes < 0)
 			{	
 				if (errno==EPIPE){
 					fprintf(stderr,"XCSoar went offline, waiting\n");
 
-					//reset socket
+					//reset socket mute vario and try reconnection
 					close(xcsoar_sock);
 					vario_mute();
-					xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
-					if (xcsoar_sock == -1)
-						fprintf(stderr, "could not create socket\n");
-					
-					wait_for_XCSoar(xcsoar_sock,(struct sockaddr*)&s_xcsoar);
-					
-					// make socket to XCsoar non-blocking
-					fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
+					xcsoar_sock = create_xcsoar_connection();
 					break;
 
 				} else {
@@ -414,14 +422,14 @@ int main(int argc, char *argv[])
 			  }
 			}
 		}
-		
-		// connection dropped cleanup
-		fprintf(fp_console, "Connection dropped\n");	
-		fflush(fp_console);
-		
-		close(xcsoar_sock);
+				
 		close(connfd);
 	}
+
+	// connection dropped cleanup
+	fprintf(fp_console, "Connection dropped\n");	
+	fflush(fp_console);
+	close(xcsoar_sock);
 	return 0;
 }
 
