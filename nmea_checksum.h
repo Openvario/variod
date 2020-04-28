@@ -34,19 +34,19 @@ Copyright_License {
  * @param p a NULL terminated string
  */
 static inline uint8_t
-NMEAChecksum(const char *p)
+nmea_checksum(const char *p)
 {
-  uint8_t checksum = 0;
+	uint8_t checksum = 0;
 
-  /* skip the dollar sign at the beginning (the exclamation mark is
-     used by CAI302 */
-  if (*p == '$' || *p == '!')
-    ++p;
+	/* skip the dollar sign at the beginning (the exclamation mark is
+	   used by CAI302 */
+	if (*p == '$' || *p == '!')
+		++p;
 
-  while (*p != 0)
-    checksum ^= *p++;
+	while (*p != 0)
+		checksum ^= *p++;
 
-  return checksum;
+	return checksum;
 }
 
 /**
@@ -56,11 +56,11 @@ NMEAChecksum(const char *p)
  * @param p a NULL terminated string
  */
 static inline void
-NMEAChopChecksum(char *p)
+nmea_chop_checksum(char *p)
 {
-  char *asterisk;
+	char *asterisk;
 
-  if ((asterisk = strchr(p,'*')) != NULL) *asterisk = '\0';
+	if ((asterisk = strchr(p,'*')) != NULL) *asterisk = '\0';
 }
 
 /**
@@ -71,23 +71,23 @@ NMEAChopChecksum(char *p)
  * @param length the number of characters in the string
  */
 static inline uint8_t
-NMEAChecksum(const char *p, unsigned length)
+nmea_checksum(const char *p, unsigned length)
 {
-  uint8_t checksum = 0;
+	uint8_t checksum = 0;
 
-  unsigned i = 0;
+	unsigned i = 0;
 
-  /* skip the dollar sign at the beginning (the exclamation mark is
-     used by CAI302 */
-  if (length > 0 && (*p == '$' || *p == '!')) {
-    ++i;
-    ++p;
-  }
+	/* skip the dollar sign at the beginning (the exclamation mark is
+	   used by CAI302 */
+	if (length > 0 && (*p == '$' || *p == '!')) {
+		++i;
+		++p;
+	}
 
-  for (; i < length; ++i)
-    checksum ^= *p++;
+	for (; i < length; ++i)
+		checksum ^= *p++;
 
-  return checksum;
+	return checksum;
 }
 
 /**
@@ -95,13 +95,13 @@ NMEAChecksum(const char *p, unsigned length)
  * separated with an asterisk ('*').
  */
 bool
-VerifyNMEAChecksum(const char *p);
+verify_nmea_checksum(const char *p);
 
 /**
  * Caclulates the checksum of the specified string, and appends it at
  * the end, preceded by an asterisk ('*').
  */
 void
-AppendNMEAChecksum(char *p);
+append_nmea_checksum(char *p);
 
 #endif // VARIOD_NMEA_CHECKSUM_H
