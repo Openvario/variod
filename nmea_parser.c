@@ -1,6 +1,6 @@
 #include "nmea_parser.h"
 #include "def.h"
-#include "NMEAchecksum.h"
+#include "nmea_checksum.h"
 #define NUM_FV  10 // maximum number of values per NMEA sentence
 
 extern int g_debug;

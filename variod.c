@@ -39,7 +39,7 @@
 #include "stf.h"
 #include "nmea_parser.h"
 #include "def.h"
-#include "NMEAchecksum.h"
+#include "nmea_checksum.h"
 
 
 int connfd = 0;
