@@ -30,31 +30,31 @@ Copyright_License {
 #include <cstdint>
 
 bool
-VerifyNMEAChecksum(const char *p)
+verify_nmea_checksum(const char *p)
 {
-  assert(p != NULL);
+	assert(p != NULL);
 
-  const char *asterisk = strrchr(p, '*');
-  if (asterisk == NULL)
-    return false;
+	const char *asterisk = strrchr(p, '*');
+	if (asterisk == NULL)
+		return false;
 
-  const char *checksum_string = asterisk + 1;
-  char *endptr;
-  unsigned long ReadCheckSum2 = strtoul(checksum_string, &endptr, 16);
-  if (endptr == checksum_string || *endptr != 0 || ReadCheckSum2 >= 0x100)
-    return false;
+	const char *checksum_string = asterisk + 1;
+	char *endptr;
+	unsigned long read_checsum2 = strtoul(checksum_string, &endptr, 16);
+	if (endptr == checksum_string || *endptr != 0 || read_checsum2 >= 0x100)
+		return false;
 
-  uint8_t ReadCheckSum = (unsigned char)ReadCheckSum2;
-  uint8_t CalcCheckSum = NMEAChecksum(p, asterisk - p);
+	uint8_t read_checsum = (unsigned char)read_checsum2;
+	uint8_t calc_checksum = nmea_checksum(p, asterisk - p);
 
-  return CalcCheckSum == ReadCheckSum;
+	return calc_checksum == read_checsum;
 }
 
 void
-AppendNMEAChecksum(char *p)
+append_nmea_checksum(char *p)
 {
-  assert(p != NULL);
+	assert(p != NULL);
 
-  sprintf(p + strlen(p), "*%02X", NMEAChecksum(p));
+	sprintf(p + strlen(p), "*%02X", nmea_checksum(p));
 }
 
