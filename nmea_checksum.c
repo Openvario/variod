@@ -21,7 +21,7 @@ Copyright_License {
 }
 */
 
-#include "NMEAchecksum.h"
+#include "nmea_checksum.h"
 
 #include <cassert>
 #include <cstring>
