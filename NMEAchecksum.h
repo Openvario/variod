@@ -25,6 +25,7 @@ Copyright_License {
 #define VARIOD_NMEA_CHECKSUM_H
 
 #include <cstdint>
+#include <cstring>
 
 /**
  * Calculates the checksum for the specified line (without the
@@ -46,6 +47,20 @@ NMEAChecksum(const char *p)
     checksum ^= *p++;
 
   return checksum;
+}
+
+/**
+ * Chops off the checksum part of the sentence
+ * That is the part including and after the asterisk
+ *
+ * @param p a NULL terminated string
+ */
+static inline void
+NMEAChopChecksum(char *p)
+{
+  char *asterisk;
+
+  if ((asterisk = strchr(p,'*')) != NULL) *asterisk = '\0';
 }
 
 /**

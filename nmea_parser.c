@@ -1,10 +1,25 @@
 #include "nmea_parser.h"
 #include "def.h"
 #include "NMEAchecksum.h"
+#define NUM_FV  10 // maximum number of values per NMEA sentence
 
 extern int g_debug;
 extern int g_foreground;
 extern FILE *fp_console;
+
+// see if we get all requested parameter(s) before we start setting them
+bool robust_read_float(int n,float fv[],char *str,const char *delim)
+{
+  char *vp;
+  if (n > NUM_FV) return false;
+
+  for (int i=0; i < n; i++) {
+    vp = strtok(str,delim);
+    if (vp == NULL) return false;
+    else fv[i] = atof(vp);
+  }
+  return true;
+}
 
 void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 {
@@ -20,6 +35,9 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
   if (len >= sizeof(buffer)) return; // sentence longer than expected
 
   if (!VerifyNMEAChecksum(message)) return; // checksum error
+
+  // now it's checksum clean we don't want checksum to be mistaken as value
+  NMEAChopChecksum(message);
 
   // copy string and initialize strtok function
   strncpy(buffer, message, len);
@@ -54,16 +72,19 @@ void parse_NMEA_command(char* message)
 {
   // expect 1 NMEA sentence at a time!
   // sentence must be terninated with '\0', '\n', or '\r'
-  char *val;
   static char buffer[100];
   const char delimiter[]=",*";
   char *ptr;
   t_polar polar;
+  static float fvals[NUM_FV];
 
   unsigned int len = strlen(message);
   if (len >= sizeof(buffer)) return; // sentence longer than expected
 
   if (!VerifyNMEAChecksum(message)) return; // checksum error
+
+  // now it's checksum clean we don't want checksum to be mistaken as value
+  NMEAChopChecksum(message);
 
   // copy string and initialize strtok function
   strncpy(buffer, message, len);
@@ -85,10 +106,10 @@ void parse_NMEA_command(char* message)
       if (strcmp(ptr,"MC") == 0) {
         //Set McCready
         //printf("Set McCready\n");
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        setMC(atof(val));
-        debug_print("Get McCready Value: %f\n",atof(val));
+        if (robust_read_float(1,fvals,NULL,delimiter)) {
+          setMC(fvals[0]);
+          debug_print("Get McCready Value: %f\n",fvals[0]);
+        }
       }
       break;
 
@@ -98,20 +119,20 @@ void parse_NMEA_command(char* message)
         // we are getting total_mass / dry_mass
         // we should get total_mass / reference_mass
         // TODO: fix this in XCSoar
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        setBallast(atof(val));
-        debug_print("Get Ballast Value: %f\n",atof(val));
+        if (robust_read_float(1,fvals,NULL,delimiter)) {
+          setBallast(fvals[0]);
+          debug_print("Get Ballast Value: %f\n",fvals[0]);
+        }
       }
       break;
 
     case 'B':
       if (strcmp(ptr,"BU") == 0) {
         //Set Bugs
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        setDegradation(atof(val));
-        debug_print("Get Bugs Value: %f\n",atof(val));
+        if (robust_read_float(1,fvals,NULL,delimiter)) {
+          setDegradation(fvals[0]);
+          debug_print("Get Bugs Value: %f\n",fvals[0]);
+        }
       }
       break;
 
@@ -119,57 +140,43 @@ void parse_NMEA_command(char* message)
       if (strcmp(ptr,"POL") == 0) {
         // UNDOCUMENTED feature
         //Set Polar
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.a=atof(val);
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.b=atof(val);
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.c=atof(val);
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.w=atof(val);
-        setPolar(polar.a, polar.b, polar.c, polar.w);
-        debug_print("Get Polar POL: %f, %f, %f, %f\n",
-                    polar.a,polar.b,polar.c,polar.w);
+        if (robust_read_float(4,fvals,NULL,delimiter)) {
+          polar.a=fvals[0];
+          polar.b=fvals[1];
+          polar.c=fvals[2];
+          polar.w=fvals[3];
+          setPolar(polar.a, polar.b, polar.c, polar.w);
+          debug_print("Get Polar POL: %f, %f, %f, %f\n",
+                      polar.a,polar.b,polar.c,polar.w);
+        }
       }
       break;
 
     case 'I':
       if (strcmp(ptr,"IPO") == 0) {
         //Set ideal Polar
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.a=atof(val);
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.b=atof(val);
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.c=atof(val);
-        setIdealPolar(polar.a, polar.b, polar.c);
-        debug_print("Get Polar IPO: %f, %f, %f\n",
-                    polar.a,polar.b,polar.c);
+        if (robust_read_float(3,fvals,NULL,delimiter)) {
+          polar.a=fvals[0];
+          polar.b=fvals[1];
+          polar.c=fvals[2];
+          setIdealPolar(polar.a, polar.b, polar.c);
+          debug_print("Get Polar IPO: %f, %f, %f\n",
+                      polar.a,polar.b,polar.c);
+        }
       }
       break;
 
     case 'R':
       if (strcmp(ptr,"RPO") == 0) {
         //Set real Polar
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.a=atof(val);
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.b=atof(val);
-        val = strtok(NULL, delimiter);
-        if (val == NULL) return;
-        polar.c=atof(val);
-        setRealPolar(polar.a, polar.b, polar.c);
-        debug_print("Get Polar RPO: %f, %f, %f\n",
-                    polar.a,polar.b,polar.c);
+        if (robust_read_float(3,fvals,NULL,delimiter)) {
+          polar.a=fvals[0];
+          polar.b=fvals[1];
+          polar.c=fvals[2];
+          setRealPolar(polar.a, polar.b, polar.c);
+          debug_print("Get Polar RPO: %f, %f, %f\n",
+                      polar.a,polar.b,polar.c);
+        }
       }
       break;
 
