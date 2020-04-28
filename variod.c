@@ -39,6 +39,7 @@
 #include "stf.h"
 #include "nmea_parser.h"
 #include "def.h"
+#include "NMEAchecksum.h"
 
 
 int connfd = 0;
@@ -89,23 +90,6 @@ static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar){
 	}
 }
 
-void append_checksum(char* _msg)
-{
-  uint8_t cs=0;
-  uint8_t *msg = (uint8_t *)_msg;
-
-  /* skip the dollar sign at the beginning (the exclamation mark is
-     used by CAI302 */
-  if (*msg == '$' || *msg == '!')
-    ++msg;
-
-  while (*msg) {
-    cs ^= *msg++;
-  }
-
-  sprintf((char*)msg, "*%02X\n",cs);
-}
-
 void print_runtime_config(t_vario_config *vario_config)
 {
 	// print actual used config
@@ -144,7 +128,7 @@ int main(int argc, char *argv[])
 	float v_sink_net, ias, stf_diff;
 
 	// NMEA parsing support
-	const char sentence_delimiter[] = "\n\r";
+	const char sentence_delimiter[] = "\r\n";
 	char *next_sentence;
 	char *sentence_start[25];
 	bool request_current_settings = true;
@@ -407,7 +391,8 @@ int main(int argc, char *argv[])
 			// we might see if we need to update settings from XCSoar
 			if (request_current_settings) {
 			  strcpy(client_message,"$POV,?,RPO,MC"); // all we need for STF
-			  append_checksum(client_message);
+			  AppendNMEAChecksum(client_message);
+                          strcat(client_message,"\n");
 			  if (send(xcsoar_sock, client_message, strlen(client_message), 0) > 0) {
 			    // successful sent: cancel the request
 			    request_current_settings = false;

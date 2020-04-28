@@ -1,5 +1,6 @@
 #include "nmea_parser.h"
 #include "def.h"
+#include "NMEAchecksum.h"
 
 extern int g_debug;
 extern int g_foreground;
@@ -11,12 +12,17 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
   // sentence must be terninated with '\0', '\n', or '\r'
   char *val;
   float fv;
-  static char buffer[2001];
+  static char buffer[100];
   const char delimiter[]=",*";
   char *ptr=NULL;
 
+  unsigned int len = strlen(message);
+  if (len >= sizeof(buffer)) return; // sentence longer than expected
+
+  if (!VerifyNMEAChecksum(message)) return; // checksum error
+
   // copy string and initialize strtok function
-  strncpy(buffer, message, strlen(message));
+  strncpy(buffer, message, len);
   ptr = strtok(buffer, delimiter);
 
   if (strcmp(ptr,"$POV") == 0) ptr = strtok(NULL, delimiter);
@@ -54,8 +60,13 @@ void parse_NMEA_command(char* message)
   char *ptr;
   t_polar polar;
 
+  unsigned int len = strlen(message);
+  if (len >= sizeof(buffer)) return; // sentence longer than expected
+
+  if (!VerifyNMEAChecksum(message)) return; // checksum error
+
   // copy string and initialize strtok function
-  strncpy(buffer, message, strlen(message));
+  strncpy(buffer, message, len);
   ptr = strtok(buffer, delimiter);
 
   if (ptr && (strcmp(ptr,"$POV") == 0)) ptr = strtok(NULL, delimiter);
