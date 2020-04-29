@@ -1,15 +1,15 @@
 /*  vario_app - Audio Vario application - http://www.openvario.org/
     Copyright (C) 2014  The openvario project
-    A detailed list of copyright holders can be found in the file "AUTHORS" 
+    A detailed list of copyright holders can be found in the file "AUTHORS"
 
-    This program is free software; you can redistribute it and/or 
-    modify it under the terms of the GNU General Public License 
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
     as published by the Free Software Foundation; either version 3
     of the License, or (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -29,7 +29,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <time.h> 
+#include <time.h>
 #include <signal.h>
 #include <pthread.h>
 #include <syslog.h>
@@ -39,6 +39,7 @@
 #include "stf.h"
 #include "nmea_parser.h"
 #include "def.h"
+#include "nmea_checksum.h"
 
 
 int connfd = 0;
@@ -64,13 +65,13 @@ pthread_t tid_volume_control;
 /**
 * @brief Signal handler if variod will be interrupted
 * @param sig_num
-* @return 
-* 
+* @return
+*
 * Signal handler for catching STRG-C singal from command line
 * Closes all open files handles like log files
 * @date 17.04.2014 born
 *
-*/ 
+*/
 
 void INThandler(int sig)
 {
@@ -80,29 +81,14 @@ void INThandler(int sig)
 	close(connfd);
 	exit(0);
 }
-    
-static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar){
+
+static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar)
+{
 	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
 		fprintf(stderr, "failed to connect, trying again\n");
 		fflush(stdout);
 		sleep(1);
 	}
-}
-
-void add_checksum(char* msg){
-	int i=1;
-	int cs=0;
-	int len;
-
-	len= strlen(msg);
-
-	while (i<len && msg[i]!='*'){
-		cs ^= msg[i];	
-		i++;
-	}
-		
-	sprintf((char*) (msg+len), "%x",cs);
-	
 }
 
 void print_runtime_config(t_vario_config *vario_config)
@@ -125,7 +111,7 @@ void print_runtime_config(t_vario_config *vario_config)
 	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[stf].pulse_length_gain);
 	fprintf(fp_console,"  Base Frequency Positive:\t%d\n",vario_config[stf].base_freq_pos);
 	fprintf(fp_console,"  Base Frequency Negative:\t%d\n",vario_config[stf].base_freq_neg);
-	fprintf(fp_console,"=========================================================================\n");	
+	fprintf(fp_console,"=========================================================================\n");
 }
 
 int create_xcsoar_connection()
@@ -157,12 +143,18 @@ int main(int argc, char *argv[])
 	// socket communication
 	int xcsoar_sock;
 	struct sockaddr_in server, s_xcsoar;
-	int c , read_size;
+	int c, read_size;
 	char client_message[2001];
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
- 	float v_sink_net, ias, stf_diff;
+	float v_sink_net, ias, stf_diff;
+
+	// NMEA parsing support
+	const char sentence_delimiter[] = "\r\n";
+	char *next_sentence;
+	char *sentence_start[25];
+	bool request_current_settings = true;
 
 	// for daemonizing
 	pid_t pid;
@@ -170,18 +162,18 @@ int main(int argc, char *argv[])
 
 	//parse command line arguments
 	cmdline_parser(argc, argv);
-	
+
 	//ignore sigpipe (i.e. XCSoar went offline)
 	signal(SIGPIPE, SIG_IGN);
-	
+
 	// init vario config structure
 	init_vario_config();
 	initSTF();
 
 	//set Polar to default values (ASW24)
-	polar.a = POL_A; 
-	polar.b = POL_B; 
-	polar.c = POL_C; 
+	polar.a = POL_A;
+	polar.b = POL_B;
+	polar.c = POL_C;
 	polar.w = POL_W;
 
 	setMC(1.0);
@@ -190,94 +182,87 @@ int main(int argc, char *argv[])
 	// get config file options
 	if (fp_config != NULL)
 		cfgfile_parser(fp_config, (t_vario_config*) &vario_config,&polar);
-	
+
 	setPolar(polar.a,polar.b,polar.c,polar.w);
 	// setup server
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (listenfd == -1)
-	{
+	if (listenfd == -1) {
 		printf("Could not create socket");
 	}
-	printf("Socket created ...\n");	
-	
+	printf("Socket created ...\n");
+
 	// set server address and port for listening
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = inet_addr("127.0.0.1");
 	server.sin_port = htons(4353);
-	
+
 	nFlags = fcntl(listenfd, F_GETFL, 0);
 	nFlags |= O_NONBLOCK;
 	fcntl(listenfd, F_SETFD, nFlags);
 
 	//Bind listening socket
-	if( bind(listenfd,(struct sockaddr *)&server , sizeof(server)) < 0)
-	{
+	if( bind(listenfd,(struct sockaddr *)&server, sizeof(server)) < 0) {
 		//print the error message
 		printf("bind failed. Error");
 		return 1;
 	}
-	
-	listen(listenfd, 10); 
-	
+
+	listen(listenfd, 10);
+
 	// check if we are a daemon or stay in foreground
-	if (g_foreground == 1)
-	{
+	if (g_foreground == 1) {
 		// create CTRL-C handler
 		//signal(SIGINT, INThandler);
 		// open console again, but as file_pointer
 		fp_console = stdout;
 		stderr = stdout;
-		
+
 		// close the standard file descriptors
 		close(STDIN_FILENO);
 		//close(STDOUT_FILENO);
-		close(STDERR_FILENO);	
-	}
-	else
-	{
+		close(STDERR_FILENO);
+	} else {
 		// implement handler for kill command
 		printf("Daemonizing ...\n");
 		pid = fork();
-		
+
 		// something went wrong when forking
-		if (pid < 0) 
-		{
+		if (pid < 0) {
 			exit(EXIT_FAILURE);
 		}
-		
+
 		// we are the parent
-		if (pid > 0)
-		{	
+		if (pid > 0) {
 			exit(EXIT_SUCCESS);
 		}
-		
+
 		// set umask to zero
 		umask(0);
-				
+
 		/* Try to create our own process group */
 		sid = setsid();
 		if (sid < 0) {
 			syslog(LOG_ERR, "Could not create process group\n");
 			exit(EXIT_FAILURE);
 		}
-		
+
 		// close the standard file descriptors
 		close(STDIN_FILENO);
 		close(STDOUT_FILENO);
 		close(STDERR_FILENO);
-		
+
 		//open file for log output
 		fp_console = fopen("variod.log","w+");
 		setbuf(fp_console, NULL);
 		stderr = fp_console;
 	}
-	
+
 	// all filepointers setup -> print config
 	print_runtime_config(&vario_config[vario_mode]);
-	
+
 	// setup and start pcm player
 	start_pcm();
-
+  
 	// connect to xcsoar
 	xcsoar_sock = create_xcsoar_connection();
 		
@@ -289,48 +274,30 @@ int main(int argc, char *argv[])
 
 		//accept connection from an incoming client
 		connfd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
-		if (connfd < 0)
-		{
+		if (connfd < 0) {
 			fprintf(stderr, "accept failed");
 			return 1;
 		}
 
-		fprintf(fp_console, "Connection accepted\n");	
-		
+		fprintf(fp_console, "Connection accepted\n");
+
 		// Socket is connected
-		
+
 		//enable vario sound
-		vario_unmute();	
-		
+		vario_unmute();
+		// get current values for Polar, MC, ... from XCSoar
+		// since we might have started after XCSoar was running for a while
+		request_current_settings = true;
+
 		//Receive a message from sensord and forward to XCsoar
-		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
-		{
+		while ((read_size = recv(connfd, client_message, 2000, 0 )) > 0 ) {
 			// terminate received buffer
 			client_message[read_size] = '\0';
 
-			parse_NMEA_sensor(client_message, &sensors);
-			
-			//get the TE value from the message
-			ias = getIAS(sensors.q);
-			switch(vario_mode){
-				case vario: 
-					set_audio_val(sensors.e);
-				break;
-				case stf:
-					//sensors.s=100;
-					
-					v_sink_net=getNet( -sensors.e, ias);
-					stf_diff=ias-getSTF(v_sink_net);
-
-					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
-					else  set_audio_val(-sqrt(-stf_diff));
-
-
-				break;
-			}
 			//Send the message back to client
 			//fprintf(fp_console,"SendNMEA: %s",client_message);
 			// Send NMEA string via socket to XCSoar
+
 			int sendbytes;
 			sendbytes=send(xcsoar_sock, client_message, strlen(client_message), 0);
 			//fprintf (fp_console,"send command returned: %d\n",sendbytes);
@@ -342,29 +309,97 @@ int main(int argc, char *argv[])
 					//reset socket mute vario and try reconnection
 					close(xcsoar_sock);
 					vario_mute();
+
 					xcsoar_sock = create_xcsoar_connection();
 					break;
 
 				} else {
 					fprintf(stderr, "send failed\n");
 				}
-			}	
+			}
+
+			// use specific data from received messge locally
+			// strtok will gobble up the content of client_message
+			next_sentence = strtok(client_message,sentence_delimiter);
+
+			int i = 0;
+			int i_lim = sizeof(sentence_start)/sizeof(sentence_start[0]);
+			while ((next_sentence != NULL) && (i < i_lim)) {
+				sentence_start[i++] = next_sentence;
+				next_sentence = strtok(NULL,sentence_delimiter);
+			}
+			sentence_start[i] = NULL;
+
+			// parse message from sensors
+			// one sentence at a time
+			i = 0;
+			while (sentence_start[i]) {
+				ddebug_print("parse from sensors: >%s<\n",sentence_start[i]);
+				parse_NMEA_sensor(sentence_start[i], &sensors);
+				i += 1;
+
+				//get the TE value from the message
+				ias = getIAS(sensors.q);
+
+				switch(vario_mode) {
+				case vario:
+					set_audio_val(sensors.e);
+					break;
+				case stf:
+					//sensors.s=100;
+
+					v_sink_net=getNet( -sensors.e, ias);
+					stf_diff=ias-getSTF(v_sink_net);
+
+					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
+					else  set_audio_val(-sqrt(-stf_diff));
+
+
+					break;
+				}
+			}
+
 			// check if there is communication from XCSoar to us
-			if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
-			{
+			if ((read_size = recv(xcsoar_sock, client_message, 2000, 0 )) > 0 ) {
 				// we got some message
 				// terminate received buffer
 				client_message[read_size] = '\0';
-				
+
 				ddebug_print("Message from XCSoar: %s\n",client_message);
 
+				// strtok will gobble up the content of client_message
+				next_sentence = strtok(client_message,sentence_delimiter);
+
+				int i = 0;
+				int i_lim = sizeof(sentence_start)/sizeof(sentence_start[0]);
+				while ((next_sentence != NULL) && (i < i_lim)) {
+					sentence_start[i++] = next_sentence;
+					next_sentence = strtok(NULL,sentence_delimiter);
+				}
+				sentence_start[i] = NULL;
+
 				// parse message from XCSoar
-				parse_NMEA_command(client_message);	
-        	
+				// one sentence at a time
+				i = 0;
+				while (sentence_start[i]) {
+					ddebug_print("parse from XCSoar: >%s<\n",sentence_start[i]);
+					parse_NMEA_command(sentence_start[i]);
+					i += 1;
+				}
+
 			}
-			
+
+			// we might see if we need to update settings from XCSoar
+			if (request_current_settings) {
+				strcpy(client_message,"$POV,?,RPO,MC"); // all we need for STF
+				append_nmea_checksum(client_message);
+				strcat(client_message,"\n");
+				if (send(xcsoar_sock, client_message, strlen(client_message), 0) > 0) {
+					// successful sent: cancel the request
+					request_current_settings = false;
+				}
+			}
 		}
-				
 		close(connfd);
 	}
 

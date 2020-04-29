@@ -1,170 +1,222 @@
 #include "nmea_parser.h"
 #include "def.h"
+#include "nmea_checksum.h"
+#define NUM_FV  10 // maximum number of values per NMEA sentence
 
 extern int g_debug;
 extern int g_foreground;
 extern FILE *fp_console;
 
+// see if we get all requested parameter(s) before we start setting them
+bool robust_read_float(int n,float fv[],char *str,const char *delim)
+{
+	char *vp;
+	if (n > NUM_FV) return false;
+
+	for (int i=0; i < n; i++) {
+		vp = strtok(str,delim);
+		if (vp == NULL) return false;
+		else fv[i] = atof(vp);
+	}
+	return true;
+}
+
 void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
-{ 
+{
+	// expect 1 NMEA sentence at a time!
+	// sentence must be terninated with '\0', '\n', or '\r'
 	char *val;
-	char buffer[2001];
-	char delimiter[]=",*";
+	float fv;
+	static char buffer[100];
+	const char delimiter[]=",*";
 	char *ptr=NULL;
-	
+
+	unsigned int len = strlen(message);
+	if (len >= sizeof(buffer)) return; // sentence longer than expected
+
+	if (!verify_nmea_checksum(message)) return; // checksum error
+
+	// now it's checksum clean we don't want checksum to be mistaken as value
+	nmea_chop_checksum(message);
+
 	// copy string and initialize strtok function
-	strncpy(buffer, message, strlen(message));
-	ptr = strtok(buffer, delimiter);	
-	
-	while (ptr != NULL)
-	{
-		
-		switch (*ptr)
-		{
-			case '$':
-			// skip start of NMEA sentence
-			break;
-			
-			case 'E':
+	strncpy(buffer, message, len);
+	ptr = strtok(buffer, delimiter);
+
+	if (strcmp(ptr,"$POV") == 0) ptr = strtok(NULL, delimiter);
+	else ptr = NULL;
+
+	while (ptr != NULL) {
+		if (*ptr == '\n' || *ptr == '\r') return; // end of sentence
+
+		val = strtok(NULL, delimiter);
+		if (val == NULL) return; // there is no value after the qualifier
+
+		fv = atof(val);
+
+		if (strcmp(ptr,"E") == 0) {
 			// TE vario value
-			// get next value
-			ptr = strtok(NULL, delimiter);
-			val = (char *) malloc(strlen(ptr));
-			strncpy(val,ptr,strlen(ptr));
-			sensors->e = atof(val);
-			break;
-			
-			case 'Q':
+			sensors->e = fv;
+
+		} else if (strcmp(ptr,"Q") == 0) {
 			// Airspeed value
-			// get next value
-			ptr = strtok(NULL, delimiter);
-			val = (char *) malloc(strlen(ptr));
-			strncpy(val,ptr,strlen(ptr));
-			sensors->q = atof(val);
-			break;
-			default:
-			break;
+			sensors->q = fv;
 		}
+
 		// get next part of string
 		ptr = strtok(NULL, delimiter);
 	}
 }
 
-void parse_NMEA_command(char* message){
-	
-	char *val;
-	char buffer[100];
-	char delimiter[]=",*";
+void parse_NMEA_command(char* message)
+{
+	// expect 1 NMEA sentence at a time!
+	// sentence must be terninated with '\0', '\n', or '\r'
+	static char buffer[100];
+	const char delimiter[]=",*";
 	char *ptr;
-  t_polar polar;
-	
+	t_polar polar;
+	static float fvals[NUM_FV];
+
+	unsigned int len = strlen(message);
+	if (len >= sizeof(buffer)) return; // sentence longer than expected
+
+	if (!verify_nmea_checksum(message)) return; // checksum error
+
+	// now it's checksum clean we don't want checksum to be mistaken as value
+	nmea_chop_checksum(message);
+
 	// copy string and initialize strtok function
-	strncpy(buffer, message, strlen(message));
+	strncpy(buffer, message, len);
 	ptr = strtok(buffer, delimiter);
 
-	while (ptr != NULL)
-	{	
-		switch (*ptr)
-		{
-			case '$':
-			// skip start of NMEA sentence
-			break;
-			
-			case 'C':
-			// Command sentence
-			// get next value
-			ptr = strtok(NULL, delimiter);
-			
-			switch (*ptr)
-			{
-				case 'M':
-					if (*(ptr+1) == 'C') {
-						//Set McCready 
-						//printf("Set McCready\n");
-						ptr = strtok(NULL, delimiter);
-						val = (char *) malloc(strlen(ptr));
-						strncpy(val,ptr,strlen(ptr));
-						setMC(atof(val));
-						debug_print("Get McCready Value: %f\n",atof(val));
-					}
-				break;
-				
-				case 'W':
-					if (*(ptr+1) == 'L') {
-						//Set Wingload/Ballast 
-						ptr = strtok(NULL, delimiter);
-						val = (char *) malloc(strlen(ptr));
-						strncpy(val,ptr,strlen(ptr));
-						setBallast(atof(val));
-						debug_print("Get Ballast Value: %f\n",atof(val));
-					}
-				break;
-				
-				case 'B':
-					if (*(ptr+1) == 'U') {
-						//Set Bugs 
-						ptr = strtok(NULL, delimiter);
-						val = (char *) malloc(strlen(ptr));
-						strncpy(val,ptr,strlen(ptr));
-						setDegradation(atof(val));
-						debug_print("Get Bugs Value: %f\n",atof(val));
-					}
-				break;
-				
-				case 'P':
-					//Set Polar
-					if (*(ptr+1) == 'O' &&  *(ptr+2) == 'L') {
-						ptr = strtok(NULL, delimiter);
-						val = (char *) malloc(strlen(ptr));
-						strncpy(val,ptr,strlen(ptr));
-						polar.a=atof(val);
-						ptr = strtok(NULL, delimiter);
-						strncpy(val,ptr,strlen(ptr));
-						polar.b=atof(val);
-						ptr = strtok(NULL, delimiter);
-						strncpy(val,ptr,strlen(ptr));
-						polar.c=atof(val);
-						ptr = strtok(NULL, delimiter);
-						strncpy(val,ptr,strlen(ptr));
-						polar.w=atof(val);
-						setPolar(polar.a, polar.b, polar.c, polar.w);
-					}
-				break;
+	if (ptr && (strcmp(ptr,"$POV") == 0)) ptr = strtok(NULL, delimiter);
+	else ptr = NULL;
 
-				case 'S':
-					if (*(ptr+1) == 'T' && *(ptr+2) == 'F') {
-						// Set STF Mode
-						debug_print("Set STF Mode\n");
-						set_vario_mode(stf);
-					}
-				break;
-				case 'V':
-					if (*(ptr+1) == 'U') {
-						// volume up
-						debug_print("Volume up\n");
-						change_volume(+10.0);
-					}
-					if (*(ptr+1) == 'D') {
-						// volume down
-						debug_print("Volume down\n");
-						change_volume(-10.0);
-					}
-					if (*(ptr+1) == 'M') {
-						// Toggle Mute
-						debug_print("Toggle Mute\n");
-						toggle_mute();
-					}
-					if (*(ptr+1) == 'A' &&  *(ptr+2) == 'R') {
-						// Set Vario Mode
-						debug_print("Set Vario Mode\n");
-						set_vario_mode(vario);
-					}
-				break;
-				
+	if (ptr && (strcmp(ptr,"C") == 0)) ptr = strtok(NULL, delimiter);
+	else ptr = NULL;
+
+	while (ptr != NULL) {
+		switch (*ptr) {
+		case '\n':
+		case '\r':
+			return; // end of sentence
+
+		case 'M':
+			if (strcmp(ptr,"MC") == 0) {
+				//Set McCready
+				//printf("Set McCready\n");
+				if (robust_read_float(1,fvals,NULL,delimiter)) {
+					setMC(fvals[0]);
+					debug_print("Get McCready Value: %f\n",fvals[0]);
+				}
 			}
 			break;
-			
-			default:
+
+		case 'W':
+			if (strcmp(ptr,"WL") == 0) {
+				//Set Wingload/Ballast
+				// we are getting total_mass / dry_mass
+				// we should get total_mass / reference_mass
+				// TODO: fix this in XCSoar
+				if (robust_read_float(1,fvals,NULL,delimiter)) {
+					setBallast(fvals[0]);
+					debug_print("Get Ballast Value: %f\n",fvals[0]);
+				}
+			}
+			break;
+
+		case 'B':
+			if (strcmp(ptr,"BU") == 0) {
+				//Set Bugs
+				if (robust_read_float(1,fvals,NULL,delimiter)) {
+					setDegradation(fvals[0]);
+					debug_print("Get Bugs Value: %f\n",fvals[0]);
+				}
+			}
+			break;
+
+		case 'P':
+			if (strcmp(ptr,"POL") == 0) {
+				// UNDOCUMENTED feature
+				//Set Polar
+				if (robust_read_float(4,fvals,NULL,delimiter)) {
+					polar.a=fvals[0];
+					polar.b=fvals[1];
+					polar.c=fvals[2];
+					polar.w=fvals[3];
+					setPolar(polar.a, polar.b, polar.c, polar.w);
+					debug_print("Get Polar POL: %f, %f, %f, %f\n",
+								polar.a,polar.b,polar.c,polar.w);
+				}
+			}
+			break;
+
+		case 'I':
+			if (strcmp(ptr,"IPO") == 0) {
+				//Set ideal Polar
+				if (robust_read_float(3,fvals,NULL,delimiter)) {
+					polar.a=fvals[0];
+					polar.b=fvals[1];
+					polar.c=fvals[2];
+					setIdealPolar(polar.a, polar.b, polar.c);
+					debug_print("Get Polar IPO: %f, %f, %f\n",
+								polar.a,polar.b,polar.c);
+				}
+			}
+			break;
+
+		case 'R':
+			if (strcmp(ptr,"RPO") == 0) {
+				//Set real Polar
+				if (robust_read_float(3,fvals,NULL,delimiter)) {
+					polar.a=fvals[0];
+					polar.b=fvals[1];
+					polar.c=fvals[2];
+					setRealPolar(polar.a, polar.b, polar.c);
+					debug_print("Get Polar RPO: %f, %f, %f\n",
+								polar.a,polar.b,polar.c);
+				}
+			}
+			break;
+
+		case 'N':
+			if (strcmp(ptr,"NA") == 0) {
+				// Requested data not avaliable
+				// skip the rest of the sentence
+				return;
+			}
+			break;
+
+		case 'S':
+			if (strcmp(ptr,"STF") == 0) {
+				// Set STF Mode
+				debug_print("Set STF Mode\n");
+				set_vario_mode(stf);
+			}
+			break;
+
+		case 'V':
+			if (strcmp(ptr,"VAR") == 0) {
+				// Set Vario Mode
+				debug_print("Set Vario Mode\n");
+				set_vario_mode(vario);
+
+			} else if (strcmp(ptr,"VU") == 0) {
+				// volume up
+				debug_print("Volume up\n");
+				change_volume(+10.0);
+
+			} else if (strcmp(ptr,"VD") == 0) {
+				// volume down
+				debug_print("Volume down\n");
+				change_volume(-10.0);
+
+			} else if (strcmp(ptr,"VM") == 0) {
+				// Toggle Mute
+				debug_print("Toggle Mute\n");
+				toggle_mute();
+			}
 			break;
 		}
 		// get next part of string
