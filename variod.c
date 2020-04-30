@@ -132,6 +132,8 @@ int create_xcsoar_connection()
 	wait_for_XCSoar(xcsoar_sock, (struct sockaddr*)&s_xcsoar);
 	// make socket to XCsoar non-blocking
 	fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
+	//enable vario sound
+	vario_unmute();
 	return xcsoar_sock;
 
 }
@@ -283,8 +285,7 @@ int main(int argc, char *argv[])
 
 		// Socket is connected
 
-		//enable vario sound
-		vario_unmute();
+		
 		// get current values for Polar, MC, ... from XCSoar
 		// since we might have started after XCSoar was running for a while
 		request_current_settings = true;
