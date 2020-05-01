@@ -285,8 +285,10 @@ int stimulus_from_file(configuration *cfg)
           msec_last = msec_now;
         }
       } else {
-        usleep(cfg->time_scale * cfg->delta_t);
-        time_slept += cfg->delta_t;
+        if (cfg->delta_t > 0) {
+          usleep(cfg->time_scale * cfg->delta_t);
+          time_slept += cfg->delta_t;
+          }
       }
 
 
@@ -351,7 +353,7 @@ int main(int argc, char const *argv[])
         i += 1;
         if (i < argc) {
           int dt = strtol(argv[i],NULL,10);
-          if ((dt >= 1) && (dt <= 100)) {
+          if ((dt >= 0) && (dt <= 500)) {
             cfg.delta_t = dt;
           } else {
             fprintf (stderr,"delta_t between 2 sentences: 1 ... 100\n");
