@@ -149,6 +149,7 @@ struct configuration {
   // time_scale: 200 means 5x, 1000 means 1x, 100 means 10x speed, 0 means speed of light
   int time_scale = 1000;
   int msec_incr = 500;
+  int delta_t = 25;
 };
 
 int stimulus_generated(configuration *cfg)
@@ -203,6 +204,7 @@ int stimulus_from_file(configuration *cfg)
   char date_string[] = "uninitialized";
   char *pch;
   int t;
+  int time_slept = 0;
   int msec_now = 0;
   int msec_last = 0;
   int sleep_time = 0;
@@ -277,10 +279,16 @@ int stimulus_from_file(configuration *cfg)
               msec_now += cfg->msec_incr;
             }
           }
-          usleep(cfg->time_scale * sleep_time);
+          t = sleep_time - time_slept;
+          if (t > 0) usleep(cfg->time_scale * t);
+          time_slept = 0;
           msec_last = msec_now;
         }
+      } else {
+        usleep(cfg->time_scale * cfg->delta_t);
+        time_slept += cfg->delta_t;
       }
+
 
       strcat(sentence,"\n");
 
@@ -326,15 +334,31 @@ int main(int argc, char const *argv[])
       case 'x' : // speed up of replay
         i += 1;
         if (i < argc) {
-          float x = atof(argv[i]);
+          float x = strtof(argv[i],NULL);
           if ((x > 0.1) && (x <= 1002.0)) {
             cfg.time_scale = (int)((float)1000 / x);
           } else {
-            fprintf (stderr,"time scale factor 0.1 ... 10.0\n");
+            fprintf (stderr,"time scale factor 0.1 ... 1001.0\n");
             return 1;
           }
         } else {
           fprintf (stderr,"time scale missing\n");
+          return 1;
+        }
+        break;
+
+      case 'l' : // delta_t between 2 sentences in msec
+        i += 1;
+        if (i < argc) {
+          int dt = strtol(argv[i],NULL,10);
+          if ((dt >= 1) && (dt <= 100)) {
+            cfg.delta_t = dt;
+          } else {
+            fprintf (stderr,"delta_t between 2 sentences: 1 ... 100\n");
+            return 1;
+          }
+        } else {
+          fprintf (stderr,"delta_t number missing\n");
           return 1;
         }
         break;

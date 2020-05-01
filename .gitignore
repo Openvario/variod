@@ -2,3 +2,5 @@ obj/*
 doc/*
 variod
 varioapp
+testbench/sensord_mock
+testbench/obj/*
