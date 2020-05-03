@@ -4,3 +4,4 @@ variod
 varioapp
 testbench/sensord_mock
 testbench/obj/*
+testbench/my_netcat

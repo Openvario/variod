@@ -29,6 +29,7 @@ There are a number of command line options:
 -d : in replay mode the input file may contain "dirty" sentences. E.g. checksum
         failed. These sentences are dropped unless this flag is set in which
         case dirty sentences are passed sent out, too.
+-l msec : insert a minimum latency of msec milliseconds after each NMEA sentence
 
 Example:
 sensord_mock -d -x 20 -v -i sample_flight_1.nmea
@@ -60,3 +61,10 @@ and the Baro Altitude jumping around.
 You will hear the sound from variod if this experiment is running on a platform
 which supports PulseAudio. Turn off vario sound in XCSoar "Gauges->Audio_Vario"
 to make sure it's variod you get the sound from.
+
+my_netcat:
+It is intended for systems which don't provide "nc -l".
+Run it instead of XCSoar: It reports what variod would have sent to XCSoar
+if XCSoar was actually running. Instead start "my_netcat -p 4352".
+It can be used to diff the output before and after a change to variod, for instance.
+
