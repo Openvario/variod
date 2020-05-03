@@ -41,10 +41,8 @@ verify_nmea_checksum(const char *p)
 	const char *checksum_string = asterisk + 1;
 	char *endptr;
 	unsigned long read_checsum2 = strtoul(checksum_string, &endptr, 16);
-	if (endptr == checksum_string || read_checsum2 >= 0x100
-		/* must be at the end of the line */
-		|| !((*endptr == '\0') || (*endptr == '\n') || (*endptr == '\r')))
-			return false;
+	if (endptr == checksum_string || *endptr != 0 || read_checsum2 >= 0x100)
+		return false;
 
 	uint8_t read_checsum = (unsigned char)read_checsum2;
 	uint8_t calc_checksum = nmea_checksum(p, asterisk - p);
