@@ -262,7 +262,6 @@ int main(int argc, char *argv[])
 
 	// setup and start pcm player
 	start_pcm();
-
 	// connect to xcsoar
 	xcsoar_sock = create_xcsoar_connection();
 		
@@ -296,79 +295,25 @@ int main(int argc, char *argv[])
 			//Send the message back to client
 			//fprintf(fp_console,"SendNMEA: %s",client_message);
 			// Send NMEA string via socket to XCSoar
+
 			int sendbytes;
 			sendbytes=send(xcsoar_sock, client_message, strlen(client_message), 0);
 			//fprintf (fp_console,"send command returned: %d\n",sendbytes);
 			if (sendbytes < 0)
 			{	
 				if (errno==EPIPE){
-			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0) {
-				if (errno==EPIPE) {
+
+					fprintf(stderr,"XCSoar went offline, waiting\n");
+
+					//reset socket mute vario and try reconnection
+					close(xcsoar_sock);
+					vario_mute();
+
 					xcsoar_sock = create_xcsoar_connection();
 					break;
-
-				} else {
-					fprintf(stderr, "send failed\n");
 				}
 			}
 
-			// use specific data from received messge locally
-			// strtok will gobble up the content of client_message
-			next_sentence = strtok(client_message,sentence_delimiter);
-
-			int i = 0;
-			int i_lim = sizeof(sentence_start)/sizeof(sentence_start[0]);
-			while ((next_sentence != NULL) && (i < i_lim)) {
-				sentence_start[i++] = next_sentence;
-				next_sentence = strtok(NULL,sentence_delimiter);
-			}
-			sentence_start[i] = NULL;
-
-				} else {
-					fprintf(stderr, "send failed\n");
-				}
-			}
-
-			// use specific data from received messge locally
-			// strtok will gobble up the content of client_message
-			next_sentence = strtok(client_message,sentence_delimiter);
-
-			int i = 0;
-			int i_lim = sizeof(sentence_start)/sizeof(sentence_start[0]);
-			while ((next_sentence != NULL) && (i < i_lim)) {
-				sentence_start[i++] = next_sentence;
-				next_sentence = strtok(NULL,sentence_delimiter);
-			}
-			sentence_start[i] = NULL;
-
-			// parse message from sensors
-			// one sentence at a time
-			i = 0;
-			while (sentence_start[i]) {
-				ddebug_print("parse from sensors: >%s<\n",sentence_start[i]);
-				parse_NMEA_sensor(sentence_start[i], &sensors);
-				i += 1;
-
-				//get the TE value from the message
-				ias = getIAS(sensors.q);
-
-				switch(vario_mode) {
-				case vario:
-					set_audio_val(sensors.e);
-					break;
-				case stf:
-					//sensors.s=100;
-
-					v_sink_net=getNet( -sensors.e, ias);
-					stf_diff=ias-getSTF(v_sink_net);
-
-					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
-					else  set_audio_val(-sqrt(-stf_diff));
-
-
-					break;
-				}
-			}
 
 			// check if there is communication from XCSoar to us
 			if ((read_size = recv(xcsoar_sock, client_message, 2000, 0 )) > 0 ) {
