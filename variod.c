@@ -456,6 +456,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
+		debug_print("recv(connfd,...) return: %d\n",read_size);	
 		close(connfd);
 	}
 
