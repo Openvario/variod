@@ -84,7 +84,7 @@ void INThandler(int sig)
 
 static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar)
 {
-	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
+	while (connect(xcsoar_sock, s_xcsoar, sizeof(struct sockaddr_in)) < 0) {
 		fprintf(stderr, "failed to connect, trying again\n");
 		fflush(stdout);
 		sleep(1);
@@ -124,6 +124,8 @@ int create_xcsoar_connection()
 		fprintf(stderr, "could not create socket\n");
 		return -1;
 	}	  
+	// make sure the sin_zero field is cleared
+	memset(&s_xcsoar,0,sizeof(s_xcsoar));
 	s_xcsoar.sin_addr.s_addr = inet_addr("127.0.0.1");
 	s_xcsoar.sin_family = AF_INET;
 	s_xcsoar.sin_port = htons(4352);
@@ -136,25 +138,71 @@ int create_xcsoar_connection()
 
 }
 
+int multi_sentence_clean(char *msg,int len)
+{
+	char *s = msg;
+	char *d = msg;
+	int n = 0;
+	int mulit_null = 0;
+
+	for (int i=0; i < len; i++, s++) {
+		switch (*s) {
+			case '\n':
+			case '\r':
+			case '\0' :
+				if (mulit_null == 0) {
+					*d++ = '\0';
+					n++;
+				}
+				mulit_null++;
+			break;
+
+			default:
+				*d++ = *s;
+				n++;
+				mulit_null = 0;
+			break;
+		}
+	}
+	return n;
+}
+
+int replacechar(char *str,int len, char orig, char rep)
+{
+	char *ix = str;
+	int n = 0;
+
+	for (int i=0; i < len; i++, ix++) {
+		if (*ix == orig) {
+			*ix = rep;
+			n++;
+		}
+	}
+	return n;
+}
+
+
 int main(int argc, char *argv[])
 {
 	int listenfd = 0;
 
 	// socket communication
 	int xcsoar_sock;
-	struct sockaddr_in server, s_xcsoar;
+	struct sockaddr_in sensor_server;
 	int c, read_size;
+	int sendbytes;
 	char client_message[2001];
+	char temp_buf[200];
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
 	float v_sink_net, ias, stf_diff;
 
-	// NMEA parsing support
-	const char sentence_delimiter[] = "\r\n";
-	char *next_sentence;
-	char *sentence_start[25];
+	// communication with XCSoar
 	bool request_current_settings = true;
+
+	// for debug purposes
+	int sensor_sentence_count = 0;
 
 	// for daemonizing
 	pid_t pid;
@@ -192,18 +240,29 @@ int main(int argc, char *argv[])
 	printf("Socket created ...\n");
 
 	// set server address and port for listening
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = inet_addr("127.0.0.1");
-	server.sin_port = htons(4353);
+	// make sure the sin_zero field is cleared
+	memset(&sensor_server,0,sizeof(sensor_server));
+	sensor_server.sin_family = AF_INET;
+	sensor_server.sin_port = htons(4353);
+	sensor_server.sin_addr.s_addr = inet_addr("127.0.0.1");
+	/************ we don't need this ???
+	// Convert IPv4 and IPv6 addresses from text to binary form
+	if(inet_pton(AF_INET, "127.0.0.1", &sensor_server.sin_addr) <= 0) {
+		fprintf(stderr,"Invalid address/ Address not supported \n");
+		return -1;
+	}
+	************************************/
+
 
 	nFlags = fcntl(listenfd, F_GETFL, 0);
-	nFlags |= O_NONBLOCK;
+	// no need to make it NONBLOCK because recv() is the main loop anyway
+	// nFlags |= O_NONBLOCK;
 	fcntl(listenfd, F_SETFD, nFlags);
 
 	//Bind listening socket
-	if( bind(listenfd,(struct sockaddr *)&server, sizeof(server)) < 0) {
+	if( bind(listenfd,(struct sockaddr *)&sensor_server, sizeof(struct sockaddr_in)) < 0) {
 		//print the error message
-		printf("bind failed. Error");
+		fprintf(stderr,"bind failed. Error");
 		return 1;
 	}
 
@@ -271,18 +330,20 @@ int main(int argc, char *argv[])
 >>>>>>> match code style convention
 	while(1) {
 		//Accept and incoming connection
-		fprintf(fp_console,"Waiting for incoming connections...\n");
+		fprintf(fp_console,"Waiting for incoming connections after %d sentences from sensors ...\n",
+			sensor_sentence_count);
 		fflush(fp_console);
-		c = sizeof(struct sockaddr_in);
 
+		c = sizeof(struct sockaddr);
 		//accept connection from an incoming client
-		connfd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
+		connfd = accept(listenfd, (struct sockaddr *)&sensor_server, (socklen_t*)&c);
 		if (connfd < 0) {
-			fprintf(stderr, "accept failed");
+			fprintf(stderr, "accept failed after %d sentences from sensors\n",sensor_sentence_count);
 			return 1;
 		}
 
-		fprintf(fp_console, "Connection accepted\n");
+		fprintf(fp_console, "Connection accepted, reset sensor sentence counter\n");
+		sensor_sentence_count = 0;
 
 		// Socket is connected
 <<<<<<< HEAD
@@ -309,11 +370,15 @@ int main(int argc, char *argv[])
 		// since we might have started after XCSoar was running for a while
 		request_current_settings = true;
 
-		//Receive a message from sensord and forward to XCsoar
-		while ((read_size = recv(connfd, client_message, 2000, 0 )) > 0 ) {
+		// receive a message from sensord and forward to XCsoar
+		while ((read_size = recv(connfd, client_message, sizeof(client_message), 0 )) > 0 ) {
+			// client_message may hold several sentences separated by a '\0'.
+			// it is very unlikely that recv() yields incomplete sentences
 			// terminate received buffer
 			client_message[read_size] = '\0';
+			read_size = multi_sentence_clean(client_message,read_size+1);
 
+<<<<<<< HEAD
 			//Send the message back to client
 			//fprintf(fp_console,"SendNMEA: %s",client_message);
 			// Send NMEA string via socket to XCSoar
@@ -363,64 +428,92 @@ int main(int argc, char *argv[])
 				next_sentence = strtok(NULL,sentence_delimiter);
 			}
 			sentence_start[i] = NULL;
+=======
+			// this will only show the first sentence
+			ddebug_print("Received from sensors: %s and maybe more ...\n",client_message);
+>>>>>>> clean up NMEA sentence passing and socket stability issues
 
 			// parse message from sensors
 			// one sentence at a time
-			i = 0;
-			while (sentence_start[i]) {
-				ddebug_print("parse from sensors: >%s<\n",sentence_start[i]);
-				parse_NMEA_sensor(sentence_start[i], &sensors);
-				i += 1;
+			for (int j=0; j < read_size;) {
+				// take a copy because it'll be gobbled up
+				strcpy(temp_buf,client_message + j);
+				if (strlen(temp_buf) > 0) {
+					// ddebug_print("parse from sensors %d >%s",sensor_sentence_count,temp_buf);
+					// ddebug_print("%d bytes\n",sendbytes);
+					// Send NMEA string via socket to XCSoar
+					// XCSoar wants a '\n' at the end of the sentence
+					strcat(temp_buf,"\n");
+					sendbytes=send(xcsoar_sock, temp_buf, strlen(temp_buf), 0);
+					if (sendbytes < 0)
+					{	
+						if (errno==EPIPE){
+							fprintf(stderr,"XCSoar went offline, waiting\n");
 
-				//get the TE value from the message
-				ias = getIAS(sensors.q);
+							//reset socket mute vario and try reconnection
+							close(xcsoar_sock);
+							vario_mute();
 
-				switch(vario_mode) {
-				case vario:
-					set_audio_val(sensors.e);
-					break;
-				case stf:
-					//sensors.s=100;
+							xcsoar_sock = create_xcsoar_connection();
+							break;
 
-					v_sink_net=getNet( -sensors.e, ias);
-					stf_diff=ias-getSTF(v_sink_net);
+						} else {
+							fprintf(stderr, "send failed\n");
+						}
+					}
+					// make shure we give XCSoar enough time to recieve line by line
+					// usleep(5000); We probably don't need it (any more).
+					sensor_sentence_count++;
+					ddebug_print("%d: %s",sensor_sentence_count,temp_buf);
+					// parseing will destroy the content, hence last in the chain
+					parse_NMEA_sensor(temp_buf, &sensors);
+					j += (strlen(client_message+j) + 1);
+				} else {
+					// if there is garbage in the queue
+					j += 1; }
+			}
+			//get the TE value from the message
+			ias = getIAS(sensors.q);
+			ddebug_print("IAS: %1.1f\n",ias);
 
-					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
-					else  set_audio_val(-sqrt(-stf_diff));
+			switch(vario_mode) {
+			case vario:
+				set_audio_val(sensors.e);
+				break;
+			case stf:
+				//sensors.s=100;
+
+				v_sink_net=getNet( -sensors.e, ias);
+				stf_diff=ias-getSTF(v_sink_net);
+
+				if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
+				else  set_audio_val(-sqrt(-stf_diff));
 
 
-					break;
-				}
+				break;
 			}
 
 			// check if there is communication from XCSoar to us
-			if ((read_size = recv(xcsoar_sock, client_message, 2000, 0 )) > 0 ) {
+			if ((read_size = recv(xcsoar_sock, client_message, sizeof(client_message), 0 )) > 0 ) {
 				// we got some message
+				// client_message may hold several sentences each terminated by a '\0'.
 				// terminate received buffer
 				client_message[read_size] = '\0';
+				read_size = multi_sentence_clean(client_message,read_size+1);
 
-				ddebug_print("Message from XCSoar: %s\n",client_message);
-
-				// strtok will gobble up the content of client_message
-				next_sentence = strtok(client_message,sentence_delimiter);
-
-				int i = 0;
-				int i_lim = sizeof(sentence_start)/sizeof(sentence_start[0]);
-				while ((next_sentence != NULL) && (i < i_lim)) {
-					sentence_start[i++] = next_sentence;
-					next_sentence = strtok(NULL,sentence_delimiter);
-				}
-				sentence_start[i] = NULL;
-
+				ddebug_print("Received from XCSoar: %s and maybe more ...\n",client_message);
 				// parse message from XCSoar
 				// one sentence at a time
-				i = 0;
-				while (sentence_start[i]) {
-					ddebug_print("parse from XCSoar: >%s<\n",sentence_start[i]);
-					parse_NMEA_command(sentence_start[i]);
-					i += 1;
+				// replacechar(client_message,read_size,'\n','\0');
+				// replacechar(client_message,read_size,'\r','\0');
+				for (int j=0; j < read_size;) {
+					if (strlen(client_message+j) > 0) {
+						strcpy(temp_buf,client_message+j);
+						ddebug_print("parse from XCSoar %d: >%s<\n",j,temp_buf);
+						parse_NMEA_command(temp_buf);
+						j += (strlen(client_message+j) + 1);
+					} else { j += 1; }
 				}
-
 			}
 
 			// we might see if we need to update settings from XCSoar
@@ -428,7 +521,8 @@ int main(int argc, char *argv[])
 				strcpy(client_message,"$POV,?,RPO,MC"); // all we need for STF
 				append_nmea_checksum(client_message);
 				strcat(client_message,"\n");
-				if (send(xcsoar_sock, client_message, strlen(client_message), 0) > 0) {
+				if (send(xcsoar_sock, client_message, strlen(client_message)+1, 0) > 0) {
+					debug_print("Request settings: %s",client_message);
 					// successful sent: cancel the request
 					request_current_settings = false;
 				}
@@ -453,6 +547,4 @@ int main(int argc, char *argv[])
 	close(xcsoar_sock);
 	return 0;
 }
-
-
 

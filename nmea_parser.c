@@ -1,3 +1,21 @@
+/*  vario_app - Audio Vario application - http://www.openvario.org/
+    Copyright (C) 2014  The openvario project
+    A detailed list of copyright holders can be found in the file "AUTHORS"
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 3
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "nmea_parser.h"
 #include "def.h"
 #include "nmea_checksum.h"
@@ -11,12 +29,16 @@ extern FILE *fp_console;
 bool robust_read_float(int n,float fv[],char *str,const char *delim)
 {
 	char *vp;
+	char *endptr;
 	if (n > NUM_FV) return false;
 
 	for (int i=0; i < n; i++) {
 		vp = strtok(str,delim);
 		if (vp == NULL) return false;
-		else fv[i] = atof(vp);
+		else {
+			fv[i] = strtod(vp,&endptr);
+			if (*endptr != '\0') return false;
+		}
 	}
 	return true;
 }
@@ -30,6 +52,7 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 	static char buffer[100];
 	const char delimiter[]=",*";
 	char *ptr=NULL;
+	char *endptr;
 
 	unsigned int len = strlen(message);
 	if (len >= sizeof(buffer)) return; // sentence longer than expected
@@ -52,7 +75,9 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 		val = strtok(NULL, delimiter);
 		if (val == NULL) return; // there is no value after the qualifier
 
-		fv = atof(val);
+		fv = strtod(val,&endptr);
+		// number must be at the end of the token
+		if (*endptr != '\0') return;
 
 		if (strcmp(ptr,"E") == 0) {
 			// TE vario value
