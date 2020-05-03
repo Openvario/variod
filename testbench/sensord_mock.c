@@ -149,7 +149,7 @@ struct configuration {
   // time_scale: 200 means 5x, 1000 means 1x, 100 means 10x speed, 0 means speed of light
   int time_scale = 1000;
   int msec_incr = 500;
-  int delta_t = 0;
+  int delta_t = 25;
 };
 
 int stimulus_generated(configuration *cfg)
@@ -157,7 +157,6 @@ int stimulus_generated(configuration *cfg)
   float te_var = 0.0f, te_incr;
   char buffer[1024] = {0};
   int sock_err = 0;
-  int total_sent = 0;
 
   srand (123);
 
@@ -181,8 +180,7 @@ int stimulus_generated(configuration *cfg)
       line_counter += 1;
       sock_err = send(cfg->sock, buffer, strlen(buffer)+1, 0);
       if (sock_err >= 0) {
-	total_sent += sock_err;
-        if (cfg->verbose) printf ("%d,%d: %s",total_sent,line_counter,buffer);
+        if (cfg->verbose) printf ("%d: %s",line_counter,buffer);
       } else {
         fprintf(stderr,"send failed, try reconnect\n");
         sleep(1);
@@ -211,7 +209,6 @@ int stimulus_from_file(configuration *cfg)
   int msec_last = 0;
   int sleep_time = 0;
   bool time_sync = false;
-  int total_sent = 0;
 
   if (cfg->stimulus_file_name == NULL) {
     fprintf (stderr,"Input file name missing\n");
@@ -300,8 +297,7 @@ int stimulus_from_file(configuration *cfg)
       do {
         sock_err = send(cfg->sock, sentence, strlen(sentence)+1, 0);
         if (sock_err >= 0) {
-	  total_sent += sock_err;
-          if (cfg->verbose) printf ("%d,%d: %s",total_sent,line_counter,sentence);
+          if (cfg->verbose) printf ("%d: %s",line_counter,sentence);
         } else {
           fprintf(stderr,"send failed, try reconnect\n");
           sleep(1);
