@@ -136,25 +136,118 @@ int create_xcsoar_connection()
 
 }
 
+/*****************************************
+ * @brief puts a chain of NMEA sentences into a clean state and saves incomplete lines
+ * Inputs:
+ *	*msg points to the first position of the sentences
+ *	len is the total number of bytes of all sentences
+ *	*incompl_sentence points to a buffer where an
+ *	  incomplete sentence shall be saved
+ *	  NULL pointer means: don't save
+ *	max_incompl_sentence length of the incompl_sentence buffer
+ * Return value:
+ *	number of bytes processd total length of sentences + one
+ *	seperator after each sentence.
+ *	if the incomplete sentence wasn't save, n includes the length
+ *	of the latter.
+ *
+ * Input is a concatination of sentences separated
+ * by separating char(s). Separating chars are '\n' '\r' '\0'.
+ * Separating char(s) are replaced by '\0'.
+ * Multiple consecutive Separating chars are reduced to one '\0'.
+ * len is the total number of bytes including all and the final
+ * separating chars.
+ * The return value is the total number of bytes after the
+ * operation. That includes the uniquified seperators and the
+ * terminating '\0' at the end.
+ * The result is a "clean" concatination of sentences
+ * separated by single '\0'.
+ * It may save incomplete sentences (for later use) in case
+ ******************************************/
+int multi_sentence_clean(char *msg,int len, char *incompl_sentence, unsigned max_incompl_sentence)
+{
+	char *s = msg;
+	char *d = msg;
+	char *last_sentence_start = msg;
+	int n = 0;
+	int multi_seperators = 0;
+
+	//initialize to 0 lenght string
+	if (incompl_sentence != NULL) *incompl_sentence = '\0';
+
+	for (int i=0; i < len; i++, s++) {
+		switch (*s) {
+			case '\n':
+			case '\r':
+			case '\0' :
+				if (multi_seperators == 0) {
+					// keep only one seperator
+					*d++ = '\0';
+					n++;
+					// remember where the next sentence starts
+					last_sentence_start = d;
+				}
+				multi_seperators++;
+			break;
+
+			default:
+				*d++ = *s;
+				n++;
+				multi_seperators = 0;
+			break;
+		}
+	}
+
+	// terminate it just in case last sentence is incomplete
+	*d = '\0';
+
+	// save the incomplete line from the end of the recieve buffer
+	if (multi_seperators == 0) {
+		// this means the last sentence wasn't terminated!
+		ddebug_print("\nIncomplete sentence received! %d of %d\n",n,len);
+		if (last_sentence_start != NULL)
+			ddebug_print(">%s<\n",last_sentence_start);
+		if ((incompl_sentence != NULL)
+			&& (strlen(last_sentence_start) < max_incompl_sentence)) {
+			// we save the incomplete sentence for later
+			// and adjust the number of processed bytes
+			strcpy(incompl_sentence,last_sentence_start);
+			n = last_sentence_start-msg;
+			ddebug_print("Saved\n");
+		} else {
+			ddebug_print("NOT Saved\n");
+		}
+	}
+	return n;
+}
+
 int main(int argc, char *argv[])
 {
 	int listenfd = 0;
 
 	// socket communication
 	int xcsoar_sock;
-	struct sockaddr_in server, s_xcsoar;
+	struct sockaddr_in sensor_server;
 	int c, read_size;
+	int sendbytes;
 	char client_message[2001];
+	char temp_buf[200];
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
 	float v_sink_net, ias, stf_diff;
 
-	// NMEA parsing support
-	const char sentence_delimiter[] = "\r\n";
-	char *next_sentence;
-	char *sentence_start[25];
+	// for incomplete lines
+	char save_sensor_data[200];
+	char save_xcsoar_cmd[200];
+	unsigned int incompl_sens_data_length = 0;
+	unsigned int incompl_xcs_cmd_length = 0;
+
+	// communication with XCSoar
 	bool request_current_settings = true;
+
+	// for debug purposes
+	unsigned sensor_sentence_count = 0;
 
 	// for daemonizing
 	pid_t pid;
@@ -192,18 +285,18 @@ int main(int argc, char *argv[])
 	printf("Socket created ...\n");
 
 	// set server address and port for listening
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = inet_addr("127.0.0.1");
-	server.sin_port = htons(4353);
+	sensor_server.sin_family = AF_INET;
+	sensor_server.sin_addr.s_addr = inet_addr("127.0.0.1");
+	sensor_server.sin_port = htons(4353);
 
 	nFlags = fcntl(listenfd, F_GETFL, 0);
 	nFlags |= O_NONBLOCK;
 	fcntl(listenfd, F_SETFD, nFlags);
 
 	//Bind listening socket
-	if( bind(listenfd,(struct sockaddr *)&server, sizeof(server)) < 0) {
+	if( bind(listenfd,(struct sockaddr *)&sensor_server, sizeof(struct sockaddr_in)) < 0) {
 		//print the error message
-		printf("bind failed. Error");
+		fprintf(stderr,"bind failed. Error");
 		return 1;
 	}
 
@@ -268,18 +361,20 @@ int main(int argc, char *argv[])
 		
 	while(1) {
 		//Accept and incoming connection
-		fprintf(fp_console,"Waiting for incoming connections...\n");
+		fprintf(fp_console,"Waiting for incoming connections after %d sentences from sensors ...\n",
+			sensor_sentence_count);
 		fflush(fp_console);
-		c = sizeof(struct sockaddr_in);
 
+		c = sizeof(struct sockaddr);
 		//accept connection from an incoming client
-		connfd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
+		connfd = accept(listenfd, (struct sockaddr *)&sensor_server, (socklen_t*)&c);
 		if (connfd < 0) {
-			fprintf(stderr, "accept failed");
+			fprintf(stderr, "accept failed after %d sentences from sensors\n",sensor_sentence_count);
 			return 1;
 		}
 
-		fprintf(fp_console, "Connection accepted\n");
+		fprintf(fp_console, "Connection accepted, reset sensor sentence counter\n");
+		sensor_sentence_count = 0;
 
 		// Socket is connected
 
@@ -289,117 +384,147 @@ int main(int argc, char *argv[])
 		// since we might have started after XCSoar was running for a while
 		request_current_settings = true;
 
-		//Receive a message from sensord and forward to XCsoar
-		while ((read_size = recv(connfd, client_message, 2000, 0 )) > 0 ) {
-			// terminate received buffer
-			client_message[read_size] = '\0';
+		// initialize the machanism to save incomplete lines from XCSoar
+		incompl_xcs_cmd_length = 0;
+		*save_xcsoar_cmd = '\0';
 
-			//Send the message back to client
-			//fprintf(fp_console,"SendNMEA: %s",client_message);
-			// Send NMEA string via socket to XCSoar
+		// initialize the machanism to save incomplete lines from sensord
+		incompl_sens_data_length = 0;
+		*save_sensor_data = '\0';
 
-			int sendbytes;
-			sendbytes=send(xcsoar_sock, client_message, strlen(client_message), 0);
-			//fprintf (fp_console,"send command returned: %d\n",sendbytes);
-			if (sendbytes < 0)
-			{	
-				if (errno==EPIPE){
-					fprintf(stderr,"XCSoar went offline, waiting\n");
+		// receive a message from sensord and forward to XCsoar
+		while ((read_size = recv(connfd, client_message + incompl_sens_data_length,
+			sizeof(client_message) - incompl_sens_data_length - 1, 0 )) > 0 ) {
+			read_size += incompl_sens_data_length;
+			// client_message may hold several sentences separated by one or more '\0' '\n' '\r'.
+			// If there is incomplete line: saved to save_sensor_data
+			read_size = multi_sentence_clean(client_message,read_size,
+				save_sensor_data,sizeof(save_sensor_data));
 
-					//reset socket mute vario and try reconnection
-					close(xcsoar_sock);
-					vario_mute();
-
-					xcsoar_sock = create_xcsoar_connection();
-					break;
-
-				} else {
-					fprintf(stderr, "send failed\n");
-				}
-			}
-
-			// use specific data from received messge locally
-			// strtok will gobble up the content of client_message
-			next_sentence = strtok(client_message,sentence_delimiter);
-
-			int i = 0;
-			int i_lim = sizeof(sentence_start)/sizeof(sentence_start[0]);
-			while ((next_sentence != NULL) && (i < i_lim)) {
-				sentence_start[i++] = next_sentence;
-				next_sentence = strtok(NULL,sentence_delimiter);
-			}
-			sentence_start[i] = NULL;
+			// this will only show the first sentence
+			ddebug_print("Received from sensors: %s and maybe more ...\n",client_message);
 
 			// parse message from sensors
 			// one sentence at a time
-			i = 0;
-			while (sentence_start[i]) {
-				ddebug_print("parse from sensors: >%s<\n",sentence_start[i]);
-				parse_NMEA_sensor(sentence_start[i], &sensors);
-				i += 1;
+			for (int j=0; j < read_size;) {
+				// take a copy because it'll be gobbled up
+				strcpy(temp_buf,client_message + j);
+				if (strlen(temp_buf) > 0) {
+					// ddebug_print("parse from sensors %d >%s",sensor_sentence_count,temp_buf);
+					// ddebug_print("%d bytes\n",sendbytes);
+					// Send NMEA string via socket to XCSoar
+					// XCSoar wants a '\n' at the end of the sentence
+					strcat(temp_buf,"\n");
+					//     not '\0' terminated!
+					sendbytes=send(xcsoar_sock, temp_buf, strlen(temp_buf), 0);
+					if (sendbytes < 0)
+					{
+						if (errno==EPIPE){
+							fprintf(stderr,"XCSoar went offline, waiting\n");
 
-				//get the TE value from the message
-				ias = getIAS(sensors.q);
+							//reset socket mute vario and try reconnection
+							close(xcsoar_sock);
+							vario_mute();
 
-				switch(vario_mode) {
-				case vario:
-					set_audio_val(sensors.e);
-					break;
-				case stf:
-					//sensors.s=100;
+							xcsoar_sock = create_xcsoar_connection();
+							break;
 
-					v_sink_net=getNet( -sensors.e, ias);
-					stf_diff=ias-getSTF(v_sink_net);
+						} else {
+							fprintf(stderr, "send failed\n");
+						}
+					}
+					sensor_sentence_count++;
+					ddebug_print("%d: %s",sensor_sentence_count,temp_buf);
+					// parseing will destroy the content, hence last in the chain
+					parse_NMEA_sensor(temp_buf, &sensors);
+					j += (strlen(client_message+j) + 1);
+				} else {
+					// if there is garbage in the queue
+					j += 1; }
+			}
 
-					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
-					else  set_audio_val(-sqrt(-stf_diff));
+			//get the TE value from the message
+			ias = getIAS(sensors.q);
+			switch(vario_mode) {
+			case vario:
+				set_audio_val(sensors.e);
+			break;
+			case stf:
+				//sensors.s=100;
+
+				v_sink_net=getNet( -sensors.e, ias);
+				stf_diff=ias-getSTF(v_sink_net);
+
+				if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
+				else  set_audio_val(-sqrt(-stf_diff));
 
 
-					break;
+			break;
+			}
+
+			// see if there is a non-zero length fraction of a sentence
+			// from the previous receive
+			incompl_xcs_cmd_length = strlen(save_xcsoar_cmd);
+			if (incompl_xcs_cmd_length > 0) {
+				if (incompl_xcs_cmd_length < sizeof(save_xcsoar_cmd)) {
+					// prepend this fraction into the readbuffer
+					strcpy(client_message,save_xcsoar_cmd);
+				} else {
+					// too long for a meaningful fraction, forget it
+					incompl_xcs_cmd_length = 0;
 				}
 			}
 
 			// check if there is communication from XCSoar to us
-			if ((read_size = recv(xcsoar_sock, client_message, 2000, 0 )) > 0 ) {
+			if ((read_size = recv(xcsoar_sock, client_message + incompl_xcs_cmd_length,
+				sizeof(client_message) - incompl_xcs_cmd_length - 1, 0 )) > 0 ) {
+				read_size += incompl_xcs_cmd_length;
 				// we got some message
-				// terminate received buffer
-				client_message[read_size] = '\0';
+				// client_message may hold several sentences separated by one or more '\0' '\n' '\r'.
+				// If there is incomplete line: saved to save_xcsoar_cmd
+				read_size = multi_sentence_clean(client_message,read_size,
+					save_xcsoar_cmd,sizeof(save_xcsoar_cmd));
 
-				ddebug_print("Message from XCSoar: %s\n",client_message);
-
-				// strtok will gobble up the content of client_message
-				next_sentence = strtok(client_message,sentence_delimiter);
-
-				int i = 0;
-				int i_lim = sizeof(sentence_start)/sizeof(sentence_start[0]);
-				while ((next_sentence != NULL) && (i < i_lim)) {
-					sentence_start[i++] = next_sentence;
-					next_sentence = strtok(NULL,sentence_delimiter);
-				}
-				sentence_start[i] = NULL;
-
+				ddebug_print("Received from XCSoar: %s and maybe more ...\n",client_message);
 				// parse message from XCSoar
 				// one sentence at a time
-				i = 0;
-				while (sentence_start[i]) {
-					ddebug_print("parse from XCSoar: >%s<\n",sentence_start[i]);
-					parse_NMEA_command(sentence_start[i]);
-					i += 1;
+				for (int j=0; j < read_size;) {
+					if (strlen(client_message+j) > 0) {
+						strcpy(temp_buf,client_message+j);
+						ddebug_print("parse from XCSoar %d: >%s<\n",j,temp_buf);
+						parse_NMEA_command(temp_buf);
+						j += (strlen(client_message+j) + 1);
+					} else { j += 1; }
 				}
-
 			}
 
 			// we might see if we need to update settings from XCSoar
 			if (request_current_settings) {
 				strcpy(client_message,"$POV,?,RPO,MC"); // all we need for STF
 				append_nmea_checksum(client_message);
+				// XCSoar wants a '\n' at the end of the sentence
 				strcat(client_message,"\n");
+				//     not '\0' terminated!
 				if (send(xcsoar_sock, client_message, strlen(client_message), 0) > 0) {
+					debug_print("Request settings: %s",client_message);
 					// successful sent: cancel the request
 					request_current_settings = false;
 				}
 			}
+
+			// see if there is a non-zero length fraction of the sentence
+			incompl_sens_data_length = strlen(save_sensor_data);
+			if (incompl_sens_data_length > 0) {
+				if (incompl_sens_data_length < sizeof(save_sensor_data)) {
+					// prepend this fraction into the readbuffer
+					strcpy(client_message,save_sensor_data);
+				} else {
+					// too long for a meaningful fraction, forget it
+					incompl_sens_data_length = 0;
+				}
+			}
 		}
+		debug_print("recv(connfd,...) return: %d\n",read_size);
 		close(connfd);
 	}
 
@@ -409,6 +534,4 @@ int main(int argc, char *argv[])
 	close(xcsoar_sock);
 	return 0;
 }
-
-
 
