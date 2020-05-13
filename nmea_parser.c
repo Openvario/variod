@@ -31,16 +31,16 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 	const char delimiter[]=",*";
 	char *ptr=NULL;
 
-	unsigned int len = strlen(message);
-	if (len >= sizeof(buffer)) return; // sentence longer than expected
+	unsigned int len = strlen(message) + 1; // include terminating 0 in the count
+	if (len > sizeof(buffer)) return; // sentence longer than expected
+	strncpy(buffer, message, len);
 
-	if (!verify_nmea_checksum(message)) return; // checksum error
+	if (!verify_nmea_checksum(buffer)) return; // checksum error
 
 	// now it's checksum clean we don't want checksum to be mistaken as value
-	nmea_chop_checksum(message);
+	nmea_chop_checksum(buffer);
 
-	// copy string and initialize strtok function
-	strncpy(buffer, message, len);
+	// initialize strtok function
 	ptr = strtok(buffer, delimiter);
 
 	if (strcmp(ptr,"$POV") == 0) ptr = strtok(NULL, delimiter);
@@ -78,16 +78,16 @@ void parse_NMEA_command(char* message)
 	t_polar polar;
 	static float fvals[NUM_FV];
 
-	unsigned int len = strlen(message);
-	if (len >= sizeof(buffer)) return; // sentence longer than expected
+	unsigned int len = strlen(message) + 1; // include terminating 0 in the count
+	if (len > sizeof(buffer)) return; // sentence longer than expected
+	strncpy(buffer, message, len);
 
-	if (!verify_nmea_checksum(message)) return; // checksum error
+	if (!verify_nmea_checksum(buffer)) return; // checksum error
 
 	// now it's checksum clean we don't want checksum to be mistaken as value
-	nmea_chop_checksum(message);
+	nmea_chop_checksum(buffer);
 
-	// copy string and initialize strtok function
-	strncpy(buffer, message, len);
+	// initialize strtok function
 	ptr = strtok(buffer, delimiter);
 
 	if (ptr && (strcmp(ptr,"$POV") == 0)) ptr = strtok(NULL, delimiter);

@@ -413,6 +413,7 @@ int main(int argc, char *argv[])
 					// ddebug_print("parse from sensors %d >%s",sensor_sentence_count,temp_buf);
 					// ddebug_print("%d bytes\n",sendbytes);
 					// Send NMEA string via socket to XCSoar
+					parse_NMEA_sensor(temp_buf, &sensors);
 					// XCSoar wants a '\n' at the end of the sentence
 					strcat(temp_buf,"\n");
 					//     not '\0' terminated!
@@ -435,8 +436,6 @@ int main(int argc, char *argv[])
 					}
 					sensor_sentence_count++;
 					ddebug_print("%d: %s",sensor_sentence_count,temp_buf);
-					// parseing will destroy the content, hence last in the chain
-					parse_NMEA_sensor(temp_buf, &sensors);
 					j += (strlen(client_message+j) + 1);
 				} else {
 					// if there is garbage in the queue
