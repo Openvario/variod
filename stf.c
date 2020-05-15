@@ -3,6 +3,8 @@
 
 float mc_val;
 t_polar polar, ideal_polar;
+// remember if we have received the Real Polar from XCSoar, yet.
+bool real_polar_valid = false;
 float ballast;
 float degradation;
 
@@ -36,12 +38,16 @@ void setMC(float mc){
 }
 
 static void updateRealPolar(){
+  // we don't use Ideal Polar and degradation and ballast
+  // if we have the Real Polar from XCSoar
+  if (real_polar_valid) return;
+
   float loading_factor= (ideal_polar.w >0)? sqrt((ideal_polar.w + ballast) / ideal_polar.w) : 1;
   float deg_inv = (degradation>0)? 1.0/degradation : 1;
 
   polar.a= deg_inv * ideal_polar.a / loading_factor;
   polar.b= deg_inv * ideal_polar.b;
-  polar.c= deg_inv * ideal_polar.c / loading_factor;
+  polar.c= deg_inv * ideal_polar.c * loading_factor;
 }
 
 
@@ -52,6 +58,13 @@ void setPolar(float a, float b, float c, float w){
   ideal_polar.w=w;
   updateRealPolar();
 } 
+
+void setRealPolar(float a, float b, float c){
+  polar.a=a;
+  polar.b=b;
+  polar.c=c;
+  real_polar_valid = true;
+}
 
 void setBallast(float b){
 	ballast=b;
