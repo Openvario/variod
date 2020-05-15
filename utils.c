@@ -29,12 +29,16 @@
 bool variod_utils::read_float_from_sentence(int n,float fv[],char *str,const char *delim)
 {
 	char *vp;
+	char *endptr;
+
 	if (n > NUM_FV) return false;
 
 	for (int i=0; i < n; i++) {
 		vp = strtok(str,delim);
 		if (vp == NULL) return false;
-		else fv[i] = atof(vp);
+
+		fv[i] = strtof(vp,&endptr);
+		if (endptr == vp || *endptr != 0) return false;
 	}
 	return true;
 }
