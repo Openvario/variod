@@ -37,33 +37,49 @@ void setMC(float mc){
   mc_val=mc; 
 }
 
+/***********************************************
+ * formulas for calculating real polar from ideal polar
+ * are various places, for instance:
+ *
+ * Streckensegelflug, Helmut Reichmann, ISBN 3-613-02479-9
+ * Page 188 ff
+ *
+ * Idaflieg.de various papers
+ *
+ * In XCSoar:
+ * GlidePolar::Update() in XCSoar/src/Engine/GlideSolvers/GlidePolar.cpp
+ *********************************************/
 static void updateRealPolar(){
-  // we don't use Ideal Polar and degradation and ballast
-  // if we have the Real Polar from XCSoar
-  if (real_polar_valid) return;
+	// we don't use Ideal Polar and degradation and ballast
+	// if we have the Real Polar from XCSoar
+	if (real_polar_valid) return;
 
-  float loading_factor= (ideal_polar.w >0)? sqrt((ideal_polar.w + ballast) / ideal_polar.w) : 1;
-  float deg_inv = (degradation>0)? 1.0/degradation : 1;
+	// TODO: this formula for loading_factor is incorrect
+	// it should be loading_factor = sqrt(total_mass/reference_mass)
+	// with total_mass = dry_mass + ballast
+	// reference_mass is the mass at which the polar was measured.
+	float loading_factor= (ideal_polar.w >0)? sqrt((ideal_polar.w + ballast) / ideal_polar.w) : 1;
+	float deg_inv = (degradation>0)? 1.0/degradation : 1;
 
-  polar.a= deg_inv * ideal_polar.a / loading_factor;
-  polar.b= deg_inv * ideal_polar.b;
-  polar.c= deg_inv * ideal_polar.c * loading_factor;
+	polar.a= deg_inv * ideal_polar.a / loading_factor;
+	polar.b= deg_inv * ideal_polar.b;
+	polar.c= deg_inv * ideal_polar.c * loading_factor;
 }
 
 
 void setPolar(float a, float b, float c, float w){
-  ideal_polar.a=a;
-  ideal_polar.b=b;
-  ideal_polar.c=c;
-  ideal_polar.w=w;
-  updateRealPolar();
+	ideal_polar.a=a;
+	ideal_polar.b=b;
+	ideal_polar.c=c;
+	ideal_polar.w=w;
+	updateRealPolar();
 } 
 
 void setRealPolar(float a, float b, float c){
-  polar.a=a;
-  polar.b=b;
-  polar.c=c;
-  real_polar_valid = true;
+	polar.a=a;
+	polar.b=b;
+	polar.c=c;
+	real_polar_valid = true;
 }
 
 void setBallast(float b){
@@ -77,5 +93,5 @@ void setDegradation(float d){
 }
 
 void initSTF(){
- setPolar(POL_A,POL_B,POL_C,POL_W);
+	setPolar(POL_A,POL_B,POL_C,POL_W);
 }
