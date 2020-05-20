@@ -2,7 +2,7 @@
 #Some compiler stuff and flags
 CFLAGS += -g -Wall -fpermissive
 EXECUTABLE = variod
-_OBJ = audiovario.o variod.o cmdline_parser.o configfile_parser.o nmea_parser.o stf.o 
+_OBJ = audiovario.o variod.o cmdline_parser.o configfile_parser.o nmea_parser.o stf.o utils.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 OBJ_CAL = $(patsubst %,$(ODIR)/%,$(_OBJ_CAL))
 LIBS = -lpulse -lm -lpthread

@@ -21,6 +21,7 @@ float getNet(float v_sink, float ias);
 float getIAS(float q);
 void setMC(float mc); 
 void setPolar(float a, float b, float c, float w);
+void setRealPolar(float a, float b, float c);
 void setBallast(float b);
 void setDegradation(float d);
 void initSTF();
