@@ -26,7 +26,7 @@
 
 
 // see if we get all requested parameter(s) before we start setting them
-bool variod_utils::read_float_from_sentence(int n,float fv[],char *str,const char *delim)
+bool read_float_from_sentence(int n,float fv[],char *str,const char *delim)
 {
 	char *vp;
 	char *endptr;

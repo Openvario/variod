@@ -59,7 +59,6 @@ void parse_NMEA_command(char* message){
 	char *ptr;
 	t_polar polar;
 	static float fvals[NUM_FV];
-	variod_utils u;
 	
 	// copy string and initialize strtok function
 	strncpy(buffer, message, strlen(message));
@@ -138,7 +137,7 @@ void parse_NMEA_command(char* message){
 				case 'R':
 					//Set Real Polar
 					if (*(ptr+1) == 'P' &&  *(ptr+2) == 'O') {
-						if (u.read_float_from_sentence(3,fvals,NULL,delimiter)) {
+						if (read_float_from_sentence(3,fvals,NULL,delimiter)) {
 							// convert horizontal speed from m/s to km/h
 							polar.a=fvals[0]/(3.6*3.6);
 							polar.b=fvals[1]/3.6;

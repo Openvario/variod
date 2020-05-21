@@ -31,12 +31,6 @@
 #include "stf.h"
 #define NUM_FV  5 // maximum number of values per NMEA sentence
 
-class variod_utils{
-
-public:
-// no explicit Constructor
-// no explicit Destructor
-
 /*****************************************
  * @brief check if all requested parameter(s) are available from the
  * current position in the NMEA sentence before we use the values.
@@ -49,7 +43,5 @@ public:
  * return true on success or false if any of the checks fail
  ******************************************/
 bool read_float_from_sentence(int n,float fv[],char *str,const char *delim=",*");
-
-};
 
 #endif // VARIOD_UTILS
