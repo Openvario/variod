@@ -14,8 +14,6 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 	// https://en.wikipedia.org/wiki/NMEA_0183#Message_structure
 	// Exception to this: sentence must be terminated with '\0', no '\n', or '\r' allowed.
 
-	char *val;
-	char *endptr;
 	static char buffer[100]; // NMEA sentence must not be longer than 82 chars
 	const char delimiter[]=",*";
 	char *ptr=NULL;
@@ -39,9 +37,10 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 	else ptr = NULL;
 
 	while (ptr != NULL) {
-		val = strtok(NULL, delimiter);
+		char *val = strtok(NULL, delimiter);
 		if (val == NULL) return; // there is no value after the qualifier
 
+		char *endptr;
 		float fv = strtof(val,&endptr);
 		if (endptr == val || *endptr != 0) return; // not a clean number
 
