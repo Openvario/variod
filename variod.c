@@ -128,6 +128,45 @@ void print_runtime_config(t_vario_config *vario_config)
 	fprintf(fp_console,"=========================================================================\n");	
 }
 
+/*****************************************************************************
+ * It idenifies the first NMEA sentence from a chain of 1 or more NMEA sentences
+ * starting at message. It replaces the sentence separator <CR> or <LF> with
+ * a single 0 character. The next sentence is expected to start after this
+ * single 0 character.
+ * It returns the pointer to the start of the sentence (the $ character).
+ *
+ * It uses https://en.wikipedia.org/wiki/NMEA_0183#Message_structure
+ * as a reference for the structure of NMEA sentences.
+ * In contrast to this document it expects sentences with checksum!
+ * It does not enforce <CR><LF> at the end of the message. One of them is
+ * sufficent, but at least one of them is requited!
+ *
+ * It cannot deal with incomplete NMEA sentences wrapping over multiple recv().
+ * TODO: This will be covered at the next stage
+ *****************************************************************************/
+char *
+get_one_sentence(char *message)
+{
+	int len = strlen(message);
+	char *end = message + len; // points to the 0 at the end of string
+
+	// A NMEA sentence starts with $ and ends with * folloed by 2 bytes checksum
+	char *dollar = strchr(message, '$');
+	// If we are only interested in POV sentences:
+	// char *dollar = strstr(message, "$POV,");
+	if (dollar == NULL) return NULL;
+
+	char *asterisk = strchr(dollar+1, '*');
+	if ((asterisk == NULL) || (asterisk + 3 > end)) {
+		// this is an incomplete sentence at the end
+		debug_print("Incomplete sentence: >%s<\n",dollar);
+		return NULL;
+	}
+
+	*(asterisk + 3) = '\0'; // cut it after the checksum
+	return(dollar);
+}
+
 int main(int argc, char *argv[])
 {
 	int listenfd = 0;
@@ -136,7 +175,10 @@ int main(int argc, char *argv[])
 	int xcsoar_sock;
 	struct sockaddr_in server, s_xcsoar;
 	int c , read_size;
+	char buff[100]; // NMEA sentences must not be longer than 82 bytes
 	char client_message[2001];
+	char *sentence;
+	int sensor_sentence_counter = 0;
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
@@ -290,75 +332,94 @@ int main(int argc, char *argv[])
 		//enable vario sound
 		vario_unmute();	
 		
+		sensor_sentence_counter = 0;
 		//Receive a message from sensord and forward to XCsoar
-		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
+		while ((read_size = recv(connfd , client_message , sizeof(client_message)-1, 0 )) > 0 )
 		{
-			// terminate received buffer
+			// terminate string from recv(), just in case it's not
 			client_message[read_size] = '\0';
+			sentence = client_message;
 
-			parse_NMEA_sensor(client_message, &sensors);
-			
-			//get the TE value from the message
-			ias = getIAS(sensors.q);
-			switch(vario_mode){
-				case vario: 
-					set_audio_val(sensors.e);
-				break;
-				case stf:
-					//sensors.s=100;
-					
-					v_sink_net=getNet( -sensors.e, ias);
-					stf_diff=ias-getSTF(v_sink_net);
+			while ((sentence = get_one_sentence(sentence)) != NULL) {
+				sensor_sentence_counter += 1;
+				parse_NMEA_sensor(sentence, &sensors);
 
-					if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
-					else  set_audio_val(-sqrt(-stf_diff));
-
-
-				break;
-			}
-			//Send the message back to client
-			//printf("SendNMEA: %s",client_message);
-			// Send NMEA string via socket to XCSoar
-			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
-			{	
-				if (errno==EPIPE){
-					fprintf(stderr,"XCSoar went offline, waiting\n");
-
-					//reset socket
-					close(xcsoar_sock);
-					vario_mute();
-					xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
-					if (xcsoar_sock == -1)
-						fprintf(stderr, "could not create socket\n");
-					
-					wait_for_XCSoar(xcsoar_sock,(struct sockaddr*)&s_xcsoar);
-					
-					// make socket to XCsoar non-blocking
-					fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
+				//get the TE value from the message
+				ias = getIAS(sensors.q);
+				switch(vario_mode){
+					case vario:
+						set_audio_val(sensors.e);
 					break;
+					case stf:
+						//sensors.s=100;
+						
+						v_sink_net=getNet( -sensors.e, ias);
+						stf_diff=ias-getSTF(v_sink_net);
 
-				} else {
-					fprintf(stderr, "send failed\n");
+						if (stf_diff >=0)  set_audio_val(sqrt(stf_diff));
+						else  set_audio_val(-sqrt(-stf_diff));
+
+
+					break;
 				}
-			}	
+				//Send the message back to client
+				ddebug_print("SendNMEA: %s",sentence);
+				// Send NMEA string via socket to XCSoar
+				if (sizeof(buff) > (strlen(sentence)+2)) {
+					strcpy(buff,sentence);
+					// NMEA sentences must end with <CR><LF>
+					strcat(buff,"\r\n");
+					if (send(xcsoar_sock, buff, strlen(buff), 0) < 0)
+					{
+						if (errno==EPIPE){
+							fprintf(stderr,"XCSoar went offline, waiting\n");
+
+							//reset socket
+							close(xcsoar_sock);
+							vario_mute();
+							xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
+							if (xcsoar_sock == -1)
+								fprintf(stderr, "could not create socket\n");
+
+							wait_for_XCSoar(xcsoar_sock,(struct sockaddr*)&s_xcsoar);
+
+							// make socket to XCsoar non-blocking
+							fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
+							break;
+
+						} else {
+							fprintf(stderr, "send failed\n");
+						}
+					}
+				} else { ddebug_print("Sentence too long\n"); }
+
+				// move to the next sentence
+				sentence += (strlen(sentence)+1);
+			}
 			// check if there is communication from XCSoar to us
-			if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
+			if ((read_size = recv(xcsoar_sock , client_message , sizeof(client_message)-1, 0 )) > 0 )
 			{
-				// we got some message
-				// terminate received buffer
+				// terminate string from recv(), just in case it's not
 				client_message[read_size] = '\0';
-				
+				// we got some message
 				ddebug_print("Message from XCSoar: %s\n",client_message);
 
-				// parse message from XCSoar
-				parse_NMEA_command(client_message);	
-        	
+				sentence = client_message;
+				while ((sentence = get_one_sentence(sentence)) != NULL) {
+					// parse message from XCSoar
+					parse_NMEA_command(sentence);
+
+					// move to the next sentence
+					sentence += (strlen(sentence)+1);
+				}
 			}
-			
+			// TODO: insert the request to XCSoar to send current settings
+			// of RPO and MC. Nothing else really matters for STF.
 		}
 		
 		// connection dropped cleanup
-		fprintf(fp_console, "Connection dropped\n");	
+		fprintf(fp_console, "Connection dropped after %d sentences from sensors\n",
+			sensor_sentence_counter);
 		fflush(fp_console);
 		
 		close(xcsoar_sock);
