@@ -16,7 +16,6 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 
 	char *val;
 	char *endptr;
-	float fv;
 	static char buffer[100]; // NMEA sentence must not be longer than 82 chars
 	const char delimiter[]=",*";
 	char *ptr=NULL;
@@ -43,7 +42,7 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors)
 		val = strtok(NULL, delimiter);
 		if (val == NULL) return; // there is no value after the qualifier
 
-		fv = strtof(val,&endptr);
+		float fv = strtof(val,&endptr);
 		if (endptr == val || *endptr != 0) return; // not a clean number
 
 		if (strcmp(ptr,"E") == 0) {

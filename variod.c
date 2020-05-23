@@ -178,7 +178,6 @@ int main(int argc, char *argv[])
 	char buff[100]; // NMEA sentences must not be longer than 82 bytes
 	char client_message[2001];
 	char *sentence;
-	int sensor_sentence_counter = 0;
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
@@ -332,7 +331,7 @@ int main(int argc, char *argv[])
 		//enable vario sound
 		vario_unmute();	
 		
-		sensor_sentence_counter = 0;
+		int sensor_sentence_counter = 0;
 		//Receive a message from sensord and forward to XCsoar
 		while ((read_size = recv(connfd , client_message , sizeof(client_message)-1, 0 )) > 0 )
 		{
