@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
-#include <pulse/pulseaudio.h>
+#include "pulse/pulseaudio.h"
 	      
 #define FORMAT PA_SAMPLE_S16LE
 #define RATE 44100
@@ -50,7 +50,9 @@ typedef struct{
 	float pulse_length_gain;
 	float pulse_duty;
 	float pulse_rise;
+	float pulse_risei;
 	float pulse_fall;
+	float pulse_falli;
 	int base_freq_pos;
 	int base_freq_neg;
   float freq_gain_pos;

@@ -1,3 +1,4 @@
+#include <string.h>
 #include "audiovario.h" 
 
 
@@ -76,58 +77,62 @@ float change_volume(float delta){
   return volume;
 }
 
-float pulse_syn(float phase, float rise, float fall, float duty ){
+inline float pulse_syn(float phase, float rise, float fall, float risei, float falli, float duty ){
   float ret;
 
-  phase= fmodf(phase,2*m_pi);
-
   if (phase <rise) {
-    ret=phase/rise;
+    ret=phase*risei;
     return ret>1.0?1.0:ret;
   }
-  else if (phase < rise+duty) return 1.0;
-  else if (phase < rise+duty+fall) {
-    ret=1.0-((phase-rise-duty)/fall);
+  if (phase < rise+duty) return 1.0;
+  if (phase < rise+duty+fall) {
+    ret=1.0-((phase-rise-duty)*falli);
     return ret<0.0?0.0:ret;
   }
-  else return 0.0;
+  return 0.0;
 }
 
-float triangle(float phase ){
+inline float triangle(float phase ){
 
-  phase= fmodf(phase,2*m_pi);
   if (phase <m_pi) return (phase-m_pi/2)*2/m_pi;
-  else return 1-(phase-m_pi)*2/m_pi;
+  return 1-(phase-m_pi)*2/m_pi;
 }
 
-void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config){
+void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config) {
 	unsigned int j;
 	float freq, pulse_freq; 
+	float freq_upd, pulse_freq_upd, temp;
 
-   for(j=0;j<frames_n;j++) {
-     if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) pcm_buffer[j]=0;
-     else {
-       if (val > 0){
-         pulse_freq = (val > 0.5)? float(sample_rate)/(vario_config->pulse_length/(val*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2)));
-         freq= vario_config->base_freq_pos+(val*vario_config->freq_gain_pos);
-         pcm_buffer[j]=pulse_syn( float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr, vario_config->pulse_rise,vario_config->pulse_fall,vario_config->pulse_duty) * 327.67*volume*triangle(float(j)*m_pi*2.0/sample_rate*freq+phase_ptr);
-       }
-	   else{
-         freq= vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg);
-         pcm_buffer[j]=327.67*volume*triangle(float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr);
-      }
+	if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) { 
+		memset(pcm_buffer,0,frames_n*sizeof(int16_t));
+	} else {
+		if (val>0) {
+			pulse_freq = (val > 0.5)? float(sample_rate)/(vario_config->pulse_length/(val*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2)));
+         		freq= vario_config->base_freq_pos+(val*vario_config->freq_gain_pos);
+			temp=2.0*m_pi/float(sample_rate);
+			pulse_freq_upd=fmodf(temp*pulse_freq,2.0*m_pi);
+			freq_upd=fmodf(temp*freq,2.0*m_pi);
+			for (j=0;j<frames_n;++j) {
+				pcm_buffer[j]=(int)(round(pulse_syn(pulse_phase_ptr, vario_config->pulse_rise,vario_config->pulse_fall,vario_config->pulse_risei,vario_config->pulse_falli,vario_config->pulse_duty) * 327.67*volume*triangle(phase_ptr)));
+				pulse_phase_ptr+=pulse_freq_upd;
+				phase_ptr+=freq_upd;
+				if (pulse_phase_ptr>=2.0*m_pi) pulse_phase_ptr-=2.0*m_pi;
+				if (phase_ptr>=2.0*m_pi) phase_ptr-=2.0*m_pi;
+			}
+		} else {
+			freq= vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg);
+			freq_upd=fmodf(2.0*m_pi/float(sample_rate)*freq,2.0*m_pi);
+			for (j=0;j<frames_n;++j) {
+				pcm_buffer[j]=327.67*volume*triangle(phase_ptr);
+				phase_ptr+=freq_upd;
+				if (phase_ptr>=2.0*m_pi) phase_ptr-=2.0*m_pi;
 
-     }
-     synth_ptr++;
-   }
-   phase_ptr=float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr;
-   phase_ptr= fmodf(phase_ptr,2*m_pi);
-   
-   pulse_phase_ptr=float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr;
-   pulse_phase_ptr= fmodf(pulse_phase_ptr,2*m_pi);
-   
+			}
+		}
+	}
+	synth_ptr+=frames_n;
 }
-	      
+
 void start_pcm() {
 
     pa_threaded_mainloop *mainloop;

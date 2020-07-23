@@ -159,13 +159,15 @@ int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 				if (strcmp(tmp,"stf_pulse_rise") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_rise));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_rise));
+					vario_config[stf].pulse_risei=1/vario_config[stf].pulse_rise;	
 				}
 				// check for pulse fall  
 				if (strcmp(tmp,"stf_pulse_fall") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_fall));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_fall));
+					vario_config[stf].pulse_falli=1/vario_config[stf].pulse_fall;	
 				}
 				// check for base frequency positive
 				if (strcmp(tmp,"stf_base_freq_pos") == 0)
