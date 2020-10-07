@@ -76,10 +76,9 @@ float change_volume(float delta){
   return volume;
 }
 
-float pulse_syn(float phase, float rise, float fall, float duty ){
+inline float pulse_syn(float phase, float rise, float fall, float duty ){
   float ret;
 
-  phase= fmodf(phase,2*m_pi);
 
   if (phase <rise) {
     ret=phase/rise;
@@ -93,41 +92,53 @@ float pulse_syn(float phase, float rise, float fall, float duty ){
   else return 0.0;
 }
 
-float triangle(float phase ){
+inline float triangle(float phase ){
 
-  phase= fmodf(phase,2*m_pi);
-  if (phase <m_pi) return (phase-m_pi/2)*2/m_pi;
-  else return 1-(phase-m_pi)*2/m_pi;
+  if (phase>3) return phase-4.0;
+  if (phase>1) return 2.0-phase;
+  return phase;
 }
 
-void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config){
-	unsigned int j;
-	float freq, pulse_freq; 
+size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config){
+	int j, max;
+	float int_volume;
+	static float deltaphase,deltapulse;
 
-   for(j=0;j<frames_n;j++) {
-     if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) pcm_buffer[j]=0;
-     else {
-       if (val > 0){
-         pulse_freq = (val > 0.5)? float(sample_rate)/(vario_config->pulse_length/(val*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2)));
-         freq= vario_config->base_freq_pos+(val*vario_config->freq_gain_pos);
-         pcm_buffer[j]=pulse_syn( float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr, vario_config->pulse_rise,vario_config->pulse_fall,vario_config->pulse_duty) * 327.67*volume*triangle(float(j)*m_pi*2.0/sample_rate*freq+phase_ptr);
-       }
-	   else{
-         freq= vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg);
-         pcm_buffer[j]=327.67*volume*triangle(float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr);
-      }
-
-     }
-     synth_ptr++;
-   }
-   phase_ptr=float(j)*m_pi*2.0/float(sample_rate)*freq+phase_ptr;
-   phase_ptr= fmodf(phase_ptr,2*m_pi);
-   
-   pulse_phase_ptr=float(j)*m_pi*2.0/float(sample_rate)*pulse_freq+pulse_phase_ptr;
-   pulse_phase_ptr= fmodf(pulse_phase_ptr,2*m_pi);
-   
+	if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) {
+		for (j=0;j<frames_n;++j) pcm_buffer[j]=0;
+		phase_ptr=pulse_phase_ptr=0;
+		return frames_n;
+	} else {
+		int_volume=volume*327.67;
+		if (val > 0){
+			deltapulse =(m_pi*2.0/float(sample_rate)) * ((val > 0.5)? float(sample_rate)/(vario_config->pulse_length/(val*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2))));
+ 			deltaphase= (vario_config->base_freq_pos+(val*vario_config->freq_gain_pos))*4.0/float(sample_rate);
+			max = (int)round((floor((frames_n*deltaphase+phase_ptr)/2.0)*2.0-phase_ptr)/deltaphase);
+			if (max>0)
+				for (j=0;j<max;++j) {
+					pcm_buffer[j]=pulse_syn(pulse_phase_ptr, vario_config->pulse_rise,vario_config->pulse_fall,vario_config->pulse_duty) * int_volume*triangle(phase_ptr);
+					phase_ptr+=deltaphase;
+					if (phase_ptr>4) phase_ptr-=4;
+					pulse_phase_ptr+=deltapulse;
+					if (pulse_phase_ptr>=2.0*m_pi) pulse_phase_ptr-=2.0*m_pi;
+				}
+			else return 0;
+		} else {
+			deltaphase= (vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg))*4.0/float (sample_rate);
+                        max = (int)round((floor((frames_n*deltaphase+phase_ptr)/2.0)*2.0-phase_ptr)/deltaphase);
+			pulse_phase_ptr=0;
+			if (max>0)
+				for (j=0;j<max;++j) {
+					pcm_buffer[j]=int_volume*triangle(phase_ptr);
+					phase_ptr+=deltaphase;
+					if (phase_ptr>4) phase_ptr-=4;
+				}
+			else return 0;
+		}
+	}
+	return (size_t) max;
 }
-	      
+
 void start_pcm() {
 
     pa_threaded_mainloop *mainloop;
@@ -208,16 +219,16 @@ void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) 
     size_t bytes_to_fill = BUFFER_SIZE*2;
     int bytes_remaining = requested_bytes;
     
-    while (bytes_remaining > 0) {
+ //   while (bytes_remaining > 0) {
 
         if (bytes_to_fill > bytes_remaining) bytes_to_fill = bytes_remaining;
 
-	synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode]));
+	bytes_to_fill=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
 
         pa_stream_write(stream, buffer, bytes_to_fill, NULL, 0LL, PA_SEEK_RELATIVE);
 
-        bytes_remaining -= bytes_to_fill;
-    }
+//        bytes_remaining -= bytes_to_fill;
+//    }
 }
 
 void stream_success_cb(pa_stream *stream, int success, void *userdata) {
