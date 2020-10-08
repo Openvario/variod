@@ -2,6 +2,7 @@
 #define AUDIOVARIO
 
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <unistd.h>
 #include <stdlib.h>

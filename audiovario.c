@@ -102,10 +102,11 @@ inline float triangle(float phase ){
 size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config){
 	int j, max;
 	float int_volume;
-	static float deltaphase,deltapulse;
+	float deltaphase,deltapulse;
 
 	if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) {
-		for (j=0;j<frames_n;++j) pcm_buffer[j]=0;
+//		for (j=0;j<frames_n;++j) pcm_buffer[j]=0;
+		memset(pcm_buffer,0,frames_n*sizeof(int16_t));
 		phase_ptr=pulse_phase_ptr=0;
 		return frames_n;
 	} else {
@@ -218,17 +219,18 @@ void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) 
     
     size_t bytes_to_fill = BUFFER_SIZE*2;
     int bytes_remaining = requested_bytes;
-    
- //   while (bytes_remaining > 0) {
-
-        if (bytes_to_fill > bytes_remaining) bytes_to_fill = bytes_remaining;
-
-	bytes_to_fill=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
-
-        pa_stream_write(stream, buffer, bytes_to_fill, NULL, 0LL, PA_SEEK_RELATIVE);
-
-//        bytes_remaining -= bytes_to_fill;
-//    }
+    int bytes_filled;
+    int repeat = 1;
+ 
+    do {
+        if (bytes_to_fill > bytes_remaining) {
+		bytes_to_fill = bytes_remaining;
+		repeat=0;
+	}
+	bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
+        pa_stream_write(stream, buffer, bytes_filled, NULL, 0LL, PA_SEEK_RELATIVE);
+        bytes_remaining -= bytes_filled;
+    } while (repeat);
 }
 
 void stream_success_cb(pa_stream *stream, int success, void *userdata) {
