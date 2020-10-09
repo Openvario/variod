@@ -2,6 +2,7 @@
 #define AUDIOVARIO
 
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -70,7 +71,7 @@ void vario_mute();
 void vario_unmute();
 float change_volume(float delta);
 float triangle(float phase );
-void synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config);
+size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config);
 void start_pcm();
 void stop_pcm();
 void init_vario_config();
