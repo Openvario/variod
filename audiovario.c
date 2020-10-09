@@ -126,7 +126,7 @@ size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario
 			else return 0;
 		} else {
 			deltaphase= (vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg))*4.0/float (sample_rate);
-                        max = (int)round((floor((frames_n*deltaphase+phase_ptr)/2.0)*2.0-phase_ptr)/deltaphase);
+			max = (int)round((floor((frames_n*deltaphase+phase_ptr)/2.0)*2.0-phase_ptr)/deltaphase);
 			pulse_phase_ptr=0;
 			if (max>0)
 				for (j=0;j<max;++j) {
@@ -217,20 +217,20 @@ void stream_state_cb(pa_stream *s, void *mainloop) {
 
 void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) {
     
-    size_t bytes_to_fill = BUFFER_SIZE*2;
-    int bytes_remaining = requested_bytes;
-    int bytes_filled;
-    int repeat = 1;
- 
-    do {
-        if (bytes_to_fill > bytes_remaining) {
-		bytes_to_fill = bytes_remaining;
-		repeat=0;
-	}
-	bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
-        pa_stream_write(stream, buffer, bytes_filled, NULL, 0LL, PA_SEEK_RELATIVE);
-        bytes_remaining -= bytes_filled;
-    } while (repeat);
+	size_t bytes_to_fill = BUFFER_SIZE*2;
+	int bytes_remaining = requested_bytes;
+	int bytes_filled;
+	int repeat = 1;
+
+	do {
+		if (bytes_to_fill > bytes_remaining) {
+			bytes_to_fill = bytes_remaining;
+			repeat=0;
+		}
+		bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
+		pa_stream_write(stream, buffer, bytes_filled, NULL, 0LL, PA_SEEK_RELATIVE);
+		bytes_remaining -= bytes_filled;
+    	} while (repeat);
 }
 
 void stream_success_cb(pa_stream *stream, int success, void *userdata) {
