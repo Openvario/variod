@@ -68,52 +68,52 @@ int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 				if (strcmp(tmp,"pulse_length") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &(vario_config[vario].pulse_length));	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].loval));	
 				}
 				
 				// check for pulse gain
 				if (strcmp(tmp,"pulse_length_gain") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_length_gain));	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].hival));	
 				}
 				
 				// check for pulse duty 
 				if (strcmp(tmp,"pulse_duty") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_duty));	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_riseduty));	
 				}
 				// check for pulse rise
 				if (strcmp(tmp,"pulse_rise") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_rise));	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_rise));
 				}
 				// check for pulse fall  
 				if (strcmp(tmp,"pulse_fall") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_fall));	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].pulse_falli));
 				}
 				// check for base frequency positive
 				if (strcmp(tmp,"base_freq_pos") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &(vario_config[vario].base_freq_pos));	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].base_freq_pos));
 				}
 				
 				// check for base frequency negative
 				if (strcmp(tmp,"base_freq_neg") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &(vario_config[vario].base_freq_neg));	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].base_freq_neg));
 				}				
 				// check for frequency gain positive  
 				if (strcmp(tmp,"freq_gain_pos") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[vario].freq_gain_pos));	
+					sscanf(line, "%s %f", tmp, &(vario_config[vario].freq_gain_pos));
 				}
 				// check for frequency gain negative  
 				if (strcmp(tmp,"freq_gain_neg") == 0)
@@ -139,46 +139,46 @@ int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 				if (strcmp(tmp,"stf_pulse_length") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &(vario_config[stf].pulse_length));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].loval));	
 				}
 				
 				// check for stf_pulse gain
 				if (strcmp(tmp,"stf_pulse_length_gain") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_length_gain));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].hival));	
 				}
 				
 				// check for pulse duty 
 				if (strcmp(tmp,"stf_pulse_duty") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_duty));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_riseduty));	
 				}
 				// check for pulse rise
 				if (strcmp(tmp,"stf_pulse_rise") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_rise));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_rise));
 				}
 				// check for pulse fall  
 				if (strcmp(tmp,"stf_pulse_fall") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_fall));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].pulse_falli));
 				}
 				// check for base frequency positive
 				if (strcmp(tmp,"stf_base_freq_pos") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &(vario_config[stf].base_freq_pos));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].base_freq_pos));
 				}
 				
 				// check for base frequency negative
 				if (strcmp(tmp,"stf_base_freq_neg") == 0)
 				{
 					// get config data
-					sscanf(line, "%s %d", tmp, &(vario_config[stf].base_freq_neg));	
+					sscanf(line, "%s %f", tmp, &(vario_config[stf].base_freq_neg));
 				}				
 				// check for frequency gain positive  
 				if (strcmp(tmp,"stf_freq_gain_pos") == 0)
@@ -214,6 +214,19 @@ int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 					sscanf(line, "%s %f", tmp, &(polar->w));
 				}
 			}
+		}
+		for (int i=0;i<1;++i) {
+			vario_config[i].loval=m_pi/vario_config[i].loval;
+			vario_config[i].hival*=vario_config[i].loval*2.0;
+			vario_config[i].pulse_riseduty+=vario_config[i].pulse_rise;
+			vario_config[i].pulse_risedutyfall=vario_config[i].pulse_riseduty+vario_config[i].pulse_falli;
+			vario_config[i].freq_gain_pos*=4/(float) RATE;
+			vario_config[i].base_freq_pos*=4/(float) RATE;
+			vario_config[i].base_freq_neg*=4/(float) RATE;
+			vario_config[i].pulse_falli=1.0/vario_config[i].pulse_falli;
+			vario_config[i].pulse_falliv=vario_config[i].pulse_falli*16383.5;
+			vario_config[i].pulse_risei=1.0/vario_config[i].pulse_rise;
+			vario_config[i].pulse_riseiv=vario_config[i].pulse_risei*16383.5;
 		}
 		return(1);
 	}
