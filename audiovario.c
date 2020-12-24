@@ -44,12 +44,11 @@ void init_vario_config() {
 	// init config struct
 	vario_config[vario].deadband_low = DEADBAND_LOW;
 	vario_config[vario].deadband_high = DEADBAND_HIGH;
-	// vario_config[vario].pulse_length = PULSE_LENGTH; // don't need this any more (see loval)
-	// vario_config[vario].pulse_length_gain = PULSE_LENGTH_GAIN; // don't need this any more (see hival)
-	// vario_config[vario].pulse_duty = PULSE_DUTY; // don't need this any more (see riseduty + risedutyfall)
+	vario_config[vario].pulse_length = PULSE_LENGTH; // This isn't really needed (see loval), but without it the initial display will be wrong if nothing in conf file
+	vario_config[vario].pulse_length_gain = PULSE_LENGTH_GAIN; // This isn't really needed (see hival), but without it, the initial display will be wrong if nothing in conf file
 	vario_config[vario].pulse_rise = PULSE_RISE;
 	vario_config[vario].pulse_risei = 1.0/(float) PULSE_RISE;  // reciprocal of rise to avoid a divide
-	vario_config[vario].pulse_fall = PULSE_FALL; // don't need this any more (see falli)
+	vario_config[vario].pulse_fall = PULSE_FALL; 
 	vario_config[vario].pulse_falli = 1.0/(float) PULSE_FALL;   // reciprocal of fall to avoid a divide
 	vario_config[vario].pulse_riseduty = PULSE_RISE + PULSE_DUTY; // pre-calculate rise+duty
 	vario_config[vario].pulse_risedutyfall = PULSE_RISE + PULSE_DUTY + PULSE_FALL; // pre-calculate rise+duty+fall
@@ -62,12 +61,11 @@ void init_vario_config() {
 
 	vario_config[stf].deadband_low = STF_DEADBAND_LOW;
 	vario_config[stf].deadband_high = STF_DEADBAND_HIGH;
-	// vario_config[stf].pulse_length = STF_PULSE_LENGTH; // Don't need this any more (see loval)
-	// vario_config[stf].pulse_length_gain = STF_PULSE_LENGTH_GAIN; // Don't need this any more (see hival)
-	// vario_config[stf].pulse_duty = STF_PULSE_DUTY;  // don't need this any more (see riseduty + risedutyfall)
+	vario_config[stf].pulse_length = STF_PULSE_LENGTH; // See above
+	vario_config[stf].pulse_length_gain = STF_PULSE_LENGTH_GAIN; // See above
 	vario_config[stf].pulse_rise = STF_PULSE_RISE;
 	vario_config[stf].pulse_risei = 1.0/(float)STF_PULSE_RISE; // reciprocal of rise to avoid a divide
-	vario_config[stf].pulse_fall = STF_PULSE_FALL; // don't need this any more (see falli)
+	vario_config[stf].pulse_fall = STF_PULSE_FALL; 
 	vario_config[stf].pulse_falli = 1.0/(float) STF_PULSE_FALL;  // reciprocal of fall to avoid a divide
 	vario_config[stf].pulse_riseduty = STF_PULSE_RISE + STF_PULSE_DUTY; // Pre-calculate rise+duty
 	vario_config[stf].pulse_risedutyfall = STF_PULSE_RISE + STF_PULSE_DUTY + STF_PULSE_FALL; // Pre-calculate rise+duty+fall
