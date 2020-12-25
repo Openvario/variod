@@ -12,7 +12,7 @@
 	      
 #define FORMAT PA_SAMPLE_S16LE
 #define RATE 44100
-#define BUFFER_SIZE 4096 
+#define BUFFER_SIZE 8192
 #define m_pi 3.14159265 //M_PI doesn't work, need to check why....
 
 #define DEADBAND_LOW -0.0  
@@ -51,11 +51,19 @@ typedef struct{
 	float pulse_length_gain;
 	float pulse_duty;
 	float pulse_rise;
+	float pulse_risei;
+	float pulse_riseiv;
 	float pulse_fall;
-	int base_freq_pos;
-	int base_freq_neg;
-  float freq_gain_pos;
-  float freq_gain_neg;
+	float pulse_falli;
+	float pulse_falliv;
+	float pulse_riseduty;
+	float pulse_risedutyfall;
+	float base_freq_pos;
+	float base_freq_neg;
+	float loval;
+	float hival;
+	float freq_gain_pos;
+	float freq_gain_neg;
 } t_vario_config;
 
 

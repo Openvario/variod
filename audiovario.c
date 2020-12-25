@@ -1,12 +1,12 @@
 #include "audiovario.h" 
 
-
 int16_t buffer[BUFFER_SIZE];
 unsigned int sample_rate=RATE;
-
-int synth_ptr=0;
+float m4sr_ = 4.0/(float) sample_rate; // Pre-calculate 4 / sample_rate used for some future calculations
+//int synth_ptr=0; // Not sure what this does, don't need
 bool mute=true;
 float volume=50.0;
+float int_volume=volume*327.67; // Pre-calculate volume
 float phase_ptr=0.0;
 float pulse_phase_ptr=0.0;
 
@@ -39,105 +39,139 @@ void vario_unmute(){
   mute=false;
 }
 
-void init_vario_config()
-{
+void init_vario_config() {
+
 	// init config struct
 	vario_config[vario].deadband_low = DEADBAND_LOW;
 	vario_config[vario].deadband_high = DEADBAND_HIGH;
-	vario_config[vario].pulse_length = PULSE_LENGTH;
-	vario_config[vario].pulse_length_gain = PULSE_LENGTH_GAIN;
-	vario_config[vario].pulse_duty = PULSE_DUTY;
+	vario_config[vario].pulse_length = PULSE_LENGTH; // This isn't really needed (see loval), but without it the initial display will be wrong if nothing in conf file
+	vario_config[vario].pulse_length_gain = PULSE_LENGTH_GAIN; // This isn't really needed (see hival), but without it, the initial display will be wrong if nothing in conf file
 	vario_config[vario].pulse_rise = PULSE_RISE;
-	vario_config[vario].pulse_fall = PULSE_FALL;
-	vario_config[vario].base_freq_pos = BASE_FREQ_POS;
-	vario_config[vario].base_freq_neg = BASE_FREQ_NEG;
-	vario_config[vario].freq_gain_pos = FREQ_GAIN_POS;
-	vario_config[vario].freq_gain_neg = FREQ_GAIN_NEG;
-	
+	vario_config[vario].pulse_risei = 1.0/(float) PULSE_RISE;  // reciprocal of rise to avoid a divide
+	vario_config[vario].pulse_fall = PULSE_FALL; 
+	vario_config[vario].pulse_falli = 1.0/(float) PULSE_FALL;   // reciprocal of fall to avoid a divide
+	vario_config[vario].pulse_riseduty = PULSE_RISE + PULSE_DUTY; // pre-calculate rise+duty
+	vario_config[vario].pulse_risedutyfall = PULSE_RISE + PULSE_DUTY + PULSE_FALL; // pre-calculate rise+duty+fall
+	vario_config[vario].base_freq_pos = (float) BASE_FREQ_POS*m4sr_; // in units of: 100 grads per sample
+	vario_config[vario].base_freq_neg = (float) BASE_FREQ_NEG*m4sr_; // in units of: 100 grads per sample
+	vario_config[vario].freq_gain_pos = (float) FREQ_GAIN_POS*m4sr_; // in units of: 100 grads per sample per value
+	vario_config[vario].freq_gain_neg = (float) FREQ_GAIN_NEG;
+	vario_config[vario].loval = m_pi/(float) PULSE_LENGTH;
+	vario_config[vario].hival = vario_config[vario].loval * 2.0 * PULSE_LENGTH_GAIN;
+
 	vario_config[stf].deadband_low = STF_DEADBAND_LOW;
 	vario_config[stf].deadband_high = STF_DEADBAND_HIGH;
-	vario_config[stf].pulse_length = STF_PULSE_LENGTH;
-	vario_config[stf].pulse_length_gain = STF_PULSE_LENGTH_GAIN;
-	vario_config[stf].pulse_duty = STF_PULSE_DUTY;
+	vario_config[stf].pulse_length = STF_PULSE_LENGTH; // See above
+	vario_config[stf].pulse_length_gain = STF_PULSE_LENGTH_GAIN; // See above
 	vario_config[stf].pulse_rise = STF_PULSE_RISE;
-	vario_config[stf].pulse_fall = STF_PULSE_FALL;
-	vario_config[stf].base_freq_pos = STF_BASE_FREQ_POS;
-	vario_config[stf].base_freq_neg = STF_BASE_FREQ_NEG;
-	vario_config[stf].freq_gain_pos = STF_FREQ_GAIN_POS;
+	vario_config[stf].pulse_risei = 1.0/(float)STF_PULSE_RISE; // reciprocal of rise to avoid a divide
+	vario_config[stf].pulse_fall = STF_PULSE_FALL; 
+	vario_config[stf].pulse_falli = 1.0/(float) STF_PULSE_FALL;  // reciprocal of fall to avoid a divide
+	vario_config[stf].pulse_riseduty = STF_PULSE_RISE + STF_PULSE_DUTY; // Pre-calculate rise+duty
+	vario_config[stf].pulse_risedutyfall = STF_PULSE_RISE + STF_PULSE_DUTY + STF_PULSE_FALL; // Pre-calculate rise+duty+fall
+	vario_config[stf].base_freq_pos = (float) STF_BASE_FREQ_POS*m4sr_; // in units of: 100 grads per sample
+	vario_config[stf].base_freq_neg = (float) STF_BASE_FREQ_NEG*m4sr_; // in units of: 100 grads per sample
+	vario_config[stf].freq_gain_pos = (float) STF_FREQ_GAIN_POS*m4sr_; // in units of: 100 grads per sample per value
 	vario_config[stf].freq_gain_neg = STF_FREQ_GAIN_NEG;
+	vario_config[stf].loval = m_pi/(float) STF_PULSE_LENGTH;
+	vario_config[stf].hival = vario_config[stf].loval * 2.0 * STF_PULSE_LENGTH_GAIN;
 }
 
-float change_volume(float delta){
+float change_volume(float delta) {
   volume+=delta;
-	vario_unmute();
+  vario_unmute();
   if (volume<0) volume=0;
   if (volume>100) volume=100;
-
+  int_volume=volume*327.67; // Pre-calculate actual multiplier
+  vario_config[vario].pulse_riseiv=vario_config[vario].pulse_risei*int_volume; // Pre-calculate multiplier for 'rise' including volume
+  vario_config[vario].pulse_falliv=vario_config[vario].pulse_falli*int_volume; // Pre-calculate multiplier for 'fall' including volume
+  vario_config[stf].pulse_riseiv=vario_config[stf].pulse_risei*int_volume; // Pre-calculate multiplier for 'rise' including volume
+  vario_config[stf].pulse_falliv=vario_config[stf].pulse_falli*int_volume; // Pre-calculate multiplier for 'fall' including volume
   return volume;
 }
 
-inline float pulse_syn(float phase, float rise, float fall, float duty ){
-  float ret;
+// Synthesize the "sink" (triangle) waveform.  Amplitude is 1, and for calculation simplicity, phase is in 100s of grads (0 to 4), making it a simple
+// map (0-2) translates to (-1 to 1) and (2-4) translates to (1 to -1), both done by subtraction.
 
+inline float triangle(float phase) {
 
-  if (phase <rise) {
-    ret=phase/rise;
-    return ret>1.0?1.0:ret;
-  }
-  else if (phase < rise+duty) return 1.0;
-  else if (phase < rise+duty+fall) {
-    ret=1.0-((phase-rise-duty)/fall);
-    return ret<0.0?0.0:ret;
-  }
-  else return 0.0;
+  if (phase>2) return (3-phase); else return (phase-1);
 }
 
-inline float triangle(float phase ){
+// Synthesize_vario fills the buffer based on operating mode (muted/deadband, climb, sink):
+// This is a substantial re-write from previous versions and introduces the concept of a taper, and removes the previous pulse_syn function.  The taper is a coefficient
+// between 0 and 1.  It is always being incremented (by uprate) or decremented (by downrate) based on taperd(irection), but is limited to the range of 0 to 1.    
+// Whenever switcheing operating mode, taperd and the rates are changed abruptly but taper is continuous, therefore there will always be a smooth volume transition.  
+//
+// Climb mode is more challenging since the taperd changes to rising at pulse_phase_ptr=0, and to falling at pulse_phase_ptr = pulse_riseduty.  When switching into climb mode, 
+// pulse_phase_ptr is reset to the current taper location and direction is set based on the value of taper.  If taper is greater than .5, taperd is set to falling, else it's set to rising.
+// The hope is this will give the fastest possible audio response to switching modes. 
+//
+// This function incorporates a "safeguard" which ensures only an integer number of triangle waveforms, ending at either 0 or 180 degrees are included in a buffer.  This is
+// probably unnecessary because of the taper, but it may help in the case of a buffer underrun.
+//
+// To improve performance, use of floating point divides is minimized versus legacy versions.
 
-  if (phase>3) return phase-4.0;
-  if (phase>1) return 2.0-phase;
-  return phase;
-}
+size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config) {
+	int j=0, safeguard;
+	static int mode=0, taperd=0; 
+	static float deltaphase=vario_config->base_freq_pos, deltapulse=0; // phase accumulators
+	static float uprate, downrate;
+	static float taper=0;
 
-size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config){
-	int j, max;
-	float int_volume;
-	float deltaphase,deltapulse;
-
-	if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) {
-//		for (j=0;j<frames_n;++j) pcm_buffer[j]=0;
-		memset(pcm_buffer,0,frames_n*sizeof(int16_t));
-		phase_ptr=pulse_phase_ptr=0;
-		return frames_n;
-	} else {
-		int_volume=volume*327.67;
-		if (val > 0){
-			deltapulse =(m_pi*2.0/float(sample_rate)) * ((val > 0.5)? float(sample_rate)/(vario_config->pulse_length/(val*vario_config->pulse_length_gain)) : (float(sample_rate)/(float(vario_config->pulse_length*2))));
- 			deltaphase= (vario_config->base_freq_pos+(val*vario_config->freq_gain_pos))*4.0/float(sample_rate);
-			max = (int)round((floor((frames_n*deltaphase+phase_ptr)/2.0)*2.0-phase_ptr)/deltaphase);
-			if (max>0)
-				for (j=0;j<max;++j) {
-					pcm_buffer[j]=pulse_syn(pulse_phase_ptr, vario_config->pulse_rise,vario_config->pulse_fall,vario_config->pulse_duty) * int_volume*triangle(phase_ptr);
-					phase_ptr+=deltaphase;
-					if (phase_ptr>4) phase_ptr-=4;
-					pulse_phase_ptr+=deltapulse;
-					if (pulse_phase_ptr>=2.0*m_pi) pulse_phase_ptr-=2.0*m_pi;
+	if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) { // Mute/deadband mode
+		mode=taperd=0; 
+		uprate=downrate=0.001; // This might benefit from tweaking
+	} else { 
+		if (val<=0) { // Sink mode
+			mode=taperd=1; 
+			uprate=downrate=0.001; // This might benefit from tweaking
+			deltaphase = (vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg));
+		} else { // Climb mode
+			if (mode!=2) { // If swtiching into climb mode, reset pulse_phase_ptr and taperd
+				if (taper<.5) { // If the taper is below .5, set taper to rise
+					pulse_phase_ptr=taper*vario_config->pulse_rise;
+					taperd=1;
+				} else { // If above .5, set taper to fall
+					pulse_phase_ptr=vario_config->pulse_riseduty+(1-taper)*vario_config->pulse_fall; 
+					taperd=0;
 				}
-			else return 0;
-		} else {
-			deltaphase= (vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg))*4.0/float (sample_rate);
-			max = (int)round((floor((frames_n*deltaphase+phase_ptr)/2.0)*2.0-phase_ptr)/deltaphase);
-			pulse_phase_ptr=0;
-			if (max>0)
-				for (j=0;j<max;++j) {
-					pcm_buffer[j]=int_volume*triangle(phase_ptr);
-					phase_ptr+=deltaphase;
-					if (phase_ptr>4) phase_ptr-=4;
-				}
-			else return 0;
+			}
+			mode=2;
+			deltaphase = (vario_config->base_freq_pos+(val*vario_config->freq_gain_pos)); // 100 grad/sample for triangle wave
+			deltapulse = (val>0.5)?vario_config->hival*val : vario_config->loval; // Rad/sample for square wave
+			uprate=deltapulse*vario_config->pulse_risei; // Calculate the rising edge rate
+			downrate=deltapulse*vario_config->pulse_falli; // Calculate the falling edge rate
 		}
 	}
-	return (size_t) max;
+	safeguard  = (int)round((floor((frames_n*deltaphase+phase_ptr-1)*0.5)*2.0-phase_ptr+1)/deltaphase); // Number of samples for integer number of cycles
+
+	for (j=0;j<safeguard;++j) {
+
+		//  It's possible this could be sped up by checking if taper = 0 in which case output is 0, or 1 in which case it's int_volume*triangle.
+		if (taper==0) pcm_buffer[j]=0;
+		else if (taper==1) pcm_buffer[j]=(int) round(int_volume*triangle(phase_ptr));
+		pcm_buffer[j]=(int) round(taper*int_volume*triangle(phase_ptr));
+		phase_ptr+=deltaphase; // Accumulate triangle phase
+		if (phase_ptr>4) phase_ptr-=4; // Perform modulo
+
+		if (taperd) { // Adjust taper based on taperd
+			taper+=uprate;  // Increment Taper
+			if (taper>1) taper=1; // Limit taper at 1
+		} else {
+			taper-=downrate; // Decrement taper
+			if (taper<0) taper=0; // Limit taper at 0.
+		}
+
+		if (mode==2) { // Implement climb mode 
+			pulse_phase_ptr+=deltapulse; // Increment pulse_phase_ptr
+			if (pulse_phase_ptr>2*m_pi) { // If it rolls over...
+				pulse_phase_ptr-=(2*m_pi); // Perform modulo
+				taperd=1; // Set taperd to rising edge
+			} else if (pulse_phase_ptr>=vario_config->pulse_riseduty) taperd=0; // Set taperd to falling edge if appropriate
+		}
+	}
+	return (size_t) safeguard;
 }
 
 void start_pcm() {
@@ -220,6 +254,7 @@ void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) 
 	size_t bytes_to_fill = BUFFER_SIZE*2;
 	int bytes_remaining = requested_bytes;
 	int bytes_filled;
+	size_t maxfill;
 	int repeat = 1;
 
 	do {
