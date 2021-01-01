@@ -116,15 +116,15 @@ void print_runtime_config(t_vario_config *vario_config)
 	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config[vario].deadband_high);
 	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config[vario].pulse_length);
 	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[vario].pulse_length_gain);
-	fprintf(fp_console,"  Base Frequency Positive:\t%d\n",vario_config[vario].base_freq_pos);
-	fprintf(fp_console,"  Base Frequency Negative:\t%d\n",vario_config[vario].base_freq_neg);
+	fprintf(fp_console,"  Base Frequency Positive:\t%f\n",vario_config[vario].base_freq_pos);
+	fprintf(fp_console,"  Base Frequency Negative:\t%f\n",vario_config[vario].base_freq_neg);
 	fprintf(fp_console,"Speed to fly:\n");
 	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config[stf].deadband_low);
 	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config[stf].deadband_high);
 	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config[stf].pulse_length);
 	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[stf].pulse_length_gain);
-	fprintf(fp_console,"  Base Frequency Positive:\t%d\n",vario_config[stf].base_freq_pos);
-	fprintf(fp_console,"  Base Frequency Negative:\t%d\n",vario_config[stf].base_freq_neg);
+	fprintf(fp_console,"  Base Frequency Positive:\t%f\n",vario_config[stf].base_freq_pos);
+	fprintf(fp_console,"  Base Frequency Negative:\t%f\n",vario_config[stf].base_freq_neg);
 	fprintf(fp_console,"=========================================================================\n");	
 }
 
