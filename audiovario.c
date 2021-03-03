@@ -150,8 +150,9 @@ size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario
 
 		//  It's possible this could be sped up by checking if taper = 0 in which case output is 0, or 1 in which case it's int_volume*triangle.
 		if (taper==0) pcm_buffer[j]=0;
-		else if (taper==1) pcm_buffer[j]=(int) round(int_volume*triangle(phase_ptr));
-		pcm_buffer[j]=(int) round(taper*int_volume*triangle(phase_ptr));
+		else { if (taper==1) pcm_buffer[j]=(int) round(int_volume*triangle(phase_ptr));
+			else pcm_buffer[j]=(int) round(taper*int_volume*triangle(phase_ptr));
+		}
 		phase_ptr+=deltaphase; // Accumulate triangle phase
 		if (phase_ptr>4) phase_ptr-=4; // Perform modulo
 
