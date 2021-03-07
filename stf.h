@@ -19,10 +19,15 @@ float getSTF(float v_sink);
 float getPlaneSink(float ias);
 float getNet(float v_sink, float ias);
 float getIAS(float q);
-void setMC(float mc); 
+void setMC(float mc);
+float getMC();
 void setPolar(float a, float b, float c, float w);
+t_polar* getPolar();
+t_polar* getIdealPolar();
 void setRealPolar(float a, float b, float c);
 void setBallast(float b);
+float getBallast();
 void setDegradation(float d);
+float getDegradation();
 void initSTF();
 #endif

@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 			// terminate received buffer
 			client_message[read_size] = '\0';
 
-			parse_NMEA_sensor(client_message, &sensors);
+			parse_NMEA_sensor(client_message, &sensors,xcsoar_sock);
 			
 			//get the TE value from the message
 			ias = getIAS(sensors.q);
@@ -351,7 +351,7 @@ int main(int argc, char *argv[])
 				ddebug_print("Message from XCSoar: %s\n",client_message);
 
 				// parse message from XCSoar
-				parse_NMEA_command(client_message);	
+				parse_NMEA_command(client_message,xcsoar_sock);	
         	
 			}
 			

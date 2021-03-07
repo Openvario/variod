@@ -44,7 +44,7 @@ typedef struct{
 } t_sensor_context; 
 
 
-void parse_NMEA_sensor(char* message, t_sensor_context* sensors);
-void parse_NMEA_command(char* message);
+void parse_NMEA_sensor(char* message, t_sensor_context* sensors, int xcsoar_sock);
+void parse_NMEA_command(char* message, int xcsoar_sock);
 
 #endif
