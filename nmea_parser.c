@@ -7,7 +7,7 @@
 extern int g_debug;
 extern int g_foreground;
 extern FILE *fp_console;
-static unsigned char status=0x26;
+static unsigned char status=0x06;
 
 // Return a 0 if checksum is bad
 // Return the location of the '*' character if checksum is good.
@@ -66,7 +66,6 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors, int xcsoar_sock
 			if (status&0x04) strcat(mesg,",MC");
 			if (status&0x08) strcat(mesg,",WL");
 			if (status&0x10) strcat(mesg,",BU");
-			if (status&0x20) strcat(mesg,",VAR");
 			tx_mesg(mesg,xcsoar_sock);
 			printf ("%s\n",mesg);
 			counter=1;
@@ -257,7 +256,6 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 									break;
 								default : break;
 							}
-							//ptr2=strtok(NULL,del2);
 							break;
 						case '?' :
 							ptr2=strtok(NULL,del2);
