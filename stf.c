@@ -12,10 +12,8 @@ float getSTF(float v_sink){
 	float stfsq, speed;
 	stfsq = (polar.c+mc_val+v_sink)/polar.a;
 	speed=(stfsq > 0)? sqrt(stfsq):0;
-
   	return speed/3.6;
 }
-
 
 float getPlaneSink(float ias){
 	return polar.a*ias*ias+polar.b*ias+polar.c;
@@ -27,14 +25,16 @@ float getNet(float v_sink, float ias){
 	return v_sink-getPlaneSink(ias);
 }
 
-
-
 float getIAS(float q){
 	return sqrt(2*q / RHO);
 }
 
 void setMC(float mc){
   mc_val=mc; 
+}
+
+float getMC(){
+  return mc_val;
 }
 
 /***********************************************
@@ -73,7 +73,15 @@ void setPolar(float a, float b, float c, float w){
 	ideal_polar.c=c;
 	ideal_polar.w=w;
 	updateRealPolar();
-} 
+}
+
+t_polar* getPolar(){
+	return &polar;
+}
+
+t_polar* getIdealPolar(){
+	return &ideal_polar;
+}
 
 void setRealPolar(float a, float b, float c){
 	polar.a=a;
@@ -87,9 +95,17 @@ void setBallast(float b){
 	updateRealPolar();
 }
 
+float getBallast() {
+	return ballast;
+}
+
 void setDegradation(float d){
 	degradation=d;
 	updateRealPolar();
+}
+
+float getDegradation(){
+	return degradation;
 }
 
 void initSTF(){
