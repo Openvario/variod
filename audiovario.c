@@ -113,27 +113,30 @@ inline float triangle(float phase) {
 // To improve performance, use of floating point divides is minimized versus legacy versions.
 
 static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config) {
-	static int mode=0, taperd=0;
+	static int mode=0;
+	static bool taperd=false;
 	static float deltaphase=vario_config->base_freq_pos, deltapulse=0; // phase accumulators
 	static float uprate, downrate;
 	static float taper=0;
 
 	if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) { // Mute/deadband mode
-		mode=taperd=0;
+		mode=0;
+		taperd=false;
 		uprate=downrate=0.001; // This might benefit from tweaking
 	} else {
 		if (val<=0) { // Sink mode
-			mode=taperd=1;
+			mode=1;
+			taperd=true;
 			uprate=downrate=0.001; // This might benefit from tweaking
 			deltaphase = (vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg));
 		} else { // Climb mode
 			if (mode!=2) { // If swtiching into climb mode, reset pulse_phase_ptr and taperd
 				if (taper<.5) { // If the taper is below .5, set taper to rise
 					pulse_phase_ptr=taper*vario_config->pulse_rise;
-					taperd=1;
+					taperd=true;
 				} else { // If above .5, set taper to fall
 					pulse_phase_ptr=vario_config->pulse_riseduty+(1-taper)*vario_config->pulse_fall;
-					taperd=0;
+					taperd=false;
 				}
 			}
 			mode=2;
@@ -167,8 +170,8 @@ static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, 
 			pulse_phase_ptr+=deltapulse; // Increment pulse_phase_ptr
 			if (pulse_phase_ptr>2*m_pi) { // If it rolls over...
 				pulse_phase_ptr-=(2*m_pi); // Perform modulo
-				taperd=1; // Set taperd to rising edge
-			} else if (pulse_phase_ptr>=vario_config->pulse_riseduty) taperd=0; // Set taperd to falling edge if appropriate
+				taperd=true; // Set taperd to rising edge
+			} else if (pulse_phase_ptr>=vario_config->pulse_riseduty) taperd=false; // Set taperd to falling edge if appropriate
 		}
 	}
 	return safeguard;
@@ -186,12 +189,12 @@ static void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *use
 
 	size_t bytes_to_fill = BUFFER_SIZE*2;
 	size_t bytes_remaining = requested_bytes;
-	int repeat = 1;
+	bool repeat = true;
 
 	do {
 		if (bytes_to_fill > bytes_remaining) {
 			bytes_to_fill = bytes_remaining;
-			repeat=0;
+			repeat=false;
 		}
 		size_t bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
 		pa_stream_write(stream, buffer, bytes_filled, NULL, 0LL, PA_SEEK_RELATIVE);
