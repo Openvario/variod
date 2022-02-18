@@ -24,11 +24,8 @@
 #ifndef VARIOD_UTILS
 #define VARIOD_UTILS
 
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include "audiovario.h"
-#include "stf.h"
+#include <stdbool.h>
+
 #define NUM_FV  5 // maximum number of values per NMEA sentence
 
 /*****************************************
