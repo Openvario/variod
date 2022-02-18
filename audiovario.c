@@ -1,19 +1,19 @@
 #include "audiovario.h"
 
-int16_t buffer[BUFFER_SIZE];
-unsigned int sample_rate=RATE;
-float m4sr_ = 4.0/(float) sample_rate; // Pre-calculate 4 / sample_rate used for some future calculations
-//int synth_ptr=0; // Not sure what this does, don't need
-bool mute=true;
-float volume=50.0;
-float int_volume=volume*327.67; // Pre-calculate volume
-float phase_ptr=0.0;
-float pulse_phase_ptr=0.0;
+static int16_t buffer[BUFFER_SIZE];
+static unsigned int sample_rate=RATE;
+static float m4sr_ = 4.0/(float) sample_rate; // Pre-calculate 4 / sample_rate used for some future calculations
+//static int synth_ptr=0; // Not sure what this does, don't need
+static bool mute=true;
+static float volume=50.0;
+static float int_volume=volume*327.67; // Pre-calculate volume
+static float phase_ptr=0.0;
+static float pulse_phase_ptr=0.0;
 
 //two vario configs: one for vario one for STF
 t_vario_config vario_config[2];
 enum e_vario_mode vario_mode=vario;
-float audio_val = 0.0;
+static float audio_val = 0.0;
 
 t_vario_config* get_vario_config(enum e_vario_mode mode){
 	return &vario_config[mode];
@@ -112,7 +112,7 @@ inline float triangle(float phase) {
 //
 // To improve performance, use of floating point divides is minimized versus legacy versions.
 
-size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config) {
+static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config) {
 	int j=0, safeguard;
 	static int mode=0, taperd=0;
 	static float deltaphase=vario_config->base_freq_pos, deltapulse=0; // phase accumulators
@@ -173,6 +173,37 @@ size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario
 		}
 	}
 	return (size_t) safeguard;
+}
+
+static void context_state_cb(pa_context* context, void* mainloop) {
+    pa_threaded_mainloop_signal(mainloop, 0);
+}
+
+static void stream_state_cb(pa_stream *s, void *mainloop) {
+    pa_threaded_mainloop_signal(mainloop, 0);
+}
+
+static void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) {
+
+	size_t bytes_to_fill = BUFFER_SIZE*2;
+	int bytes_remaining = requested_bytes;
+	int bytes_filled;
+	size_t maxfill;
+	int repeat = 1;
+
+	do {
+		if (bytes_to_fill > bytes_remaining) {
+			bytes_to_fill = bytes_remaining;
+			repeat=0;
+		}
+		bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
+		pa_stream_write(stream, buffer, bytes_filled, NULL, 0LL, PA_SEEK_RELATIVE);
+		bytes_remaining -= bytes_filled;
+	} while (repeat);
+}
+
+static void stream_success_cb(pa_stream *stream, int success, void *userdata) {
+    return;
 }
 
 void start_pcm() {
@@ -238,37 +269,4 @@ void start_pcm() {
 	pa_threaded_mainloop_unlock(mainloop);
 	pa_stream_cork(stream, 0, stream_success_cb, mainloop);
 
-}
-
-
-
-void context_state_cb(pa_context* context, void* mainloop) {
-    pa_threaded_mainloop_signal(mainloop, 0);
-}
-
-void stream_state_cb(pa_stream *s, void *mainloop) {
-    pa_threaded_mainloop_signal(mainloop, 0);
-}
-
-void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) {
-
-	size_t bytes_to_fill = BUFFER_SIZE*2;
-	int bytes_remaining = requested_bytes;
-	int bytes_filled;
-	size_t maxfill;
-	int repeat = 1;
-
-	do {
-		if (bytes_to_fill > bytes_remaining) {
-			bytes_to_fill = bytes_remaining;
-			repeat=0;
-		}
-		bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
-		pa_stream_write(stream, buffer, bytes_filled, NULL, 0LL, PA_SEEK_RELATIVE);
-		bytes_remaining -= bytes_filled;
-	} while (repeat);
-}
-
-void stream_success_cb(pa_stream *stream, int success, void *userdata) {
-    return;
 }

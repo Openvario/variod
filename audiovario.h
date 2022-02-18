@@ -66,20 +66,11 @@ typedef struct{
 	float freq_gain_neg;
 } t_vario_config;
 
-
-
-void context_state_cb(pa_context* context, void* mainloop);
-void stream_state_cb(pa_stream *s, void *mainloop);
-void stream_success_cb(pa_stream *stream, int success, void *userdata);
-void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata);
-
-
 void toggle_mute();
 void vario_mute();
 void vario_unmute();
 float change_volume(float delta);
 float triangle(float phase );
-size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config);
 void start_pcm();
 void stop_pcm();
 void init_vario_config();
