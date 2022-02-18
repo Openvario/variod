@@ -1,15 +1,6 @@
 #ifndef AUDIOVARIO
 #define AUDIOVARIO
 
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <assert.h>
-#include <pulse/pulseaudio.h>
-
 #define FORMAT PA_SAMPLE_S16LE
 #define RATE 44100
 #define BUFFER_SIZE 8192

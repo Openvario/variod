@@ -1,5 +1,13 @@
 #include "audiovario.h"
 
+#include <pulse/pulseaudio.h>
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <assert.h>
+
 static int16_t buffer[BUFFER_SIZE];
 static unsigned int sample_rate=RATE;
 static float m4sr_ = 4.0/(float) sample_rate; // Pre-calculate 4 / sample_rate used for some future calculations
