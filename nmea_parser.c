@@ -21,7 +21,7 @@ static unsigned char status=0x06; // Request Real Polar and MacCready on start u
 
 // Return a 0 if checksum is bad
 // Return the location of the '*' character if checksum is good.
-int verify_checksum (char *ptr) {
+static int verify_checksum (char *ptr) {
 	int i,j,k;
 
 	for (i=j=0;((ptr[i]!=0) && (ptr[i]!='*'));++i) j^=ptr[i];
@@ -41,14 +41,14 @@ int verify_checksum (char *ptr) {
 	return i;
 }
 
-void checksum (char *ptr) {
+static void checksum (char *ptr) {
 	int i,j,k;
 
 	for (i=1,j=0,k=strlen(ptr);i<k;++i) j^=ptr[i];
 	sprintf(ptr+k,"*%02X",j);
 }
 
-inline void tx_mesg (char *client_message, int xcsoar_sock) {
+static void tx_mesg (char *client_message, int xcsoar_sock) {
 
 	checksum(client_message);
 	strcat(client_message,"\r\n");
