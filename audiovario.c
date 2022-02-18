@@ -28,15 +28,15 @@ void set_audio_val(float val){
 }
 
 void toggle_mute(){
-  mute=!mute;
+	mute=!mute;
 }
 
 void vario_mute(){
-  mute=true;
+	mute=true;
 }
 
 void vario_unmute(){
-  mute=false;
+	mute=false;
 }
 
 void init_vario_config() {
@@ -78,16 +78,16 @@ void init_vario_config() {
 }
 
 float change_volume(float delta) {
-  volume+=delta;
-  vario_unmute();
-  if (volume<0) volume=0;
-  if (volume>100) volume=100;
-  int_volume=volume*327.67; // Pre-calculate actual multiplier
-  vario_config[vario].pulse_riseiv=vario_config[vario].pulse_risei*int_volume; // Pre-calculate multiplier for 'rise' including volume
-  vario_config[vario].pulse_falliv=vario_config[vario].pulse_falli*int_volume; // Pre-calculate multiplier for 'fall' including volume
-  vario_config[stf].pulse_riseiv=vario_config[stf].pulse_risei*int_volume; // Pre-calculate multiplier for 'rise' including volume
-  vario_config[stf].pulse_falliv=vario_config[stf].pulse_falli*int_volume; // Pre-calculate multiplier for 'fall' including volume
-  return volume;
+	volume+=delta;
+	vario_unmute();
+	if (volume<0) volume=0;
+	if (volume>100) volume=100;
+	int_volume=volume*327.67; // Pre-calculate actual multiplier
+	vario_config[vario].pulse_riseiv=vario_config[vario].pulse_risei*int_volume; // Pre-calculate multiplier for 'rise' including volume
+	vario_config[vario].pulse_falliv=vario_config[vario].pulse_falli*int_volume; // Pre-calculate multiplier for 'fall' including volume
+	vario_config[stf].pulse_riseiv=vario_config[stf].pulse_risei*int_volume; // Pre-calculate multiplier for 'rise' including volume
+	vario_config[stf].pulse_falliv=vario_config[stf].pulse_falli*int_volume; // Pre-calculate multiplier for 'fall' including volume
+	return volume;
 }
 
 // Synthesize the "sink" (triangle) waveform.  Amplitude is 1, and for calculation simplicity, phase is in 100s of grads (0 to 4), making it a simple
@@ -95,7 +95,7 @@ float change_volume(float delta) {
 
 inline float triangle(float phase) {
 
-  if (phase>2) return (3-phase); else return (phase-1);
+	if (phase>2) return (3-phase); else return (phase-1);
 }
 
 // Synthesize_vario fills the buffer based on operating mode (muted/deadband, climb, sink):
@@ -177,68 +177,68 @@ size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario
 
 void start_pcm() {
 
-    pa_threaded_mainloop *mainloop;
-    pa_mainloop_api *mainloop_api;
-    pa_context *context;
-    pa_stream *stream;
+	pa_threaded_mainloop *mainloop;
+	pa_mainloop_api *mainloop_api;
+	pa_context *context;
+	pa_stream *stream;
 
-    mainloop = pa_threaded_mainloop_new();
-    assert(mainloop);
-    mainloop_api = pa_threaded_mainloop_get_api(mainloop);
-    context = pa_context_new(mainloop_api, "audio_vario");
-    assert(context);
+	mainloop = pa_threaded_mainloop_new();
+	assert(mainloop);
+	mainloop_api = pa_threaded_mainloop_get_api(mainloop);
+	context = pa_context_new(mainloop_api, "audio_vario");
+	assert(context);
 
-    pa_context_set_state_callback(context, &context_state_cb, mainloop);
+	pa_context_set_state_callback(context, &context_state_cb, mainloop);
 
-    pa_threaded_mainloop_lock(mainloop);
-    assert(pa_threaded_mainloop_start(mainloop) == 0);
+	pa_threaded_mainloop_lock(mainloop);
+	assert(pa_threaded_mainloop_start(mainloop) == 0);
 
-    printf("Connecting to pulseaudio...\n");
-    assert(pa_context_connect(context, NULL, PA_CONTEXT_NOAUTOSPAWN | PA_CONTEXT_NOFAIL, NULL) == 0);
-    for(;;) {
-        pa_context_state_t context_state = pa_context_get_state(context);
-        assert(PA_CONTEXT_IS_GOOD(context_state));
-        if (context_state == PA_CONTEXT_READY) break;
-        pa_threaded_mainloop_wait(mainloop);
-    }
-    printf("Connection to pulseaudio established.\n");
+	printf("Connecting to pulseaudio...\n");
+	assert(pa_context_connect(context, NULL, PA_CONTEXT_NOAUTOSPAWN | PA_CONTEXT_NOFAIL, NULL) == 0);
+	for(;;) {
+		pa_context_state_t context_state = pa_context_get_state(context);
+		assert(PA_CONTEXT_IS_GOOD(context_state));
+		if (context_state == PA_CONTEXT_READY) break;
+		pa_threaded_mainloop_wait(mainloop);
+	}
+	printf("Connection to pulseaudio established.\n");
 
-    pa_sample_spec sample_specifications;
-    sample_specifications.format = FORMAT;
-    sample_specifications.rate = RATE;
-    sample_specifications.channels = 1;
+	pa_sample_spec sample_specifications;
+	sample_specifications.format = FORMAT;
+	sample_specifications.rate = RATE;
+	sample_specifications.channels = 1;
 
-    pa_channel_map map;
-    pa_channel_map_init_mono(&map);
+	pa_channel_map map;
+	pa_channel_map_init_mono(&map);
 
-    stream = pa_stream_new(context, "variod", &sample_specifications, &map);
-    pa_stream_set_state_callback(stream, stream_state_cb, mainloop);
-    pa_stream_set_write_callback(stream, stream_write_cb, mainloop);
+	stream = pa_stream_new(context, "variod", &sample_specifications, &map);
+	pa_stream_set_state_callback(stream, stream_state_cb, mainloop);
+	pa_stream_set_write_callback(stream, stream_write_cb, mainloop);
 
-    pa_buffer_attr buffer_attr;
-    buffer_attr.maxlength = (uint32_t) -1;
-    buffer_attr.tlength = (uint32_t) BUFFER_SIZE; //We need low latency!
-    buffer_attr.prebuf = (uint32_t) -1;
-    buffer_attr.minreq = (uint32_t) -1;
+	pa_buffer_attr buffer_attr;
+	buffer_attr.maxlength = (uint32_t) -1;
+	buffer_attr.tlength = (uint32_t) BUFFER_SIZE; //We need low latency!
+	buffer_attr.prebuf = (uint32_t) -1;
+	buffer_attr.minreq = (uint32_t) -1;
 
-    pa_stream_flags_t stream_flags;
-    stream_flags = PA_STREAM_START_CORKED | PA_STREAM_INTERPOLATE_TIMING |
-        PA_STREAM_NOT_MONOTONIC | PA_STREAM_AUTO_TIMING_UPDATE |
-        PA_STREAM_ADJUST_LATENCY;
+	pa_stream_flags_t stream_flags;
+	stream_flags = PA_STREAM_START_CORKED | PA_STREAM_INTERPOLATE_TIMING |
+		PA_STREAM_NOT_MONOTONIC | PA_STREAM_AUTO_TIMING_UPDATE |
+		PA_STREAM_ADJUST_LATENCY;
 
-    assert(pa_stream_connect_playback(stream, NULL, &buffer_attr, stream_flags, NULL, NULL) == 0);
+	assert(pa_stream_connect_playback(stream, NULL, &buffer_attr, stream_flags, NULL, NULL) == 0);
 
-    for(;;) {
-        pa_stream_state_t stream_state = pa_stream_get_state(stream);
-        assert(PA_STREAM_IS_GOOD(stream_state));
-        if (stream_state == PA_STREAM_READY) break;
-        pa_threaded_mainloop_wait(mainloop);
-    }
+	for(;;) {
+		pa_stream_state_t stream_state = pa_stream_get_state(stream);
+		assert(PA_STREAM_IS_GOOD(stream_state));
+		if (stream_state == PA_STREAM_READY) break;
+		pa_threaded_mainloop_wait(mainloop);
+	}
 
-    pa_threaded_mainloop_unlock(mainloop);
-    pa_stream_cork(stream, 0, stream_success_cb, mainloop);
+	pa_threaded_mainloop_unlock(mainloop);
+	pa_stream_cork(stream, 0, stream_success_cb, mainloop);
 
- }
+}
 
 
 
@@ -266,7 +266,7 @@ void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) 
 		bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
 		pa_stream_write(stream, buffer, bytes_filled, NULL, 0LL, PA_SEEK_RELATIVE);
 		bytes_remaining -= bytes_filled;
-    	} while (repeat);
+	} while (repeat);
 }
 
 void stream_success_cb(pa_stream *stream, int success, void *userdata) {

@@ -10,10 +10,9 @@
 #define POL_W 355
 
 typedef struct{
-  float a, b, c;
-  float w;
+	float a, b, c;
+	float w;
 } t_polar;
-
 
 float getSTF(float v_sink);
 float getPlaneSink(float ias);

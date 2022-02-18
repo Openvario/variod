@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
- 	float v_sink_net, ias, stf_diff;
+	float v_sink_net, ias, stf_diff;
 
 	// for daemonizing
 	pid_t pid;

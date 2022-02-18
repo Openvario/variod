@@ -40,8 +40,8 @@
 #define STF_FREQ_GAIN_NEG 0.1
 
 enum e_vario_mode{
-  vario = 0,
-  stf   = 1
+	vario = 0,
+	stf   = 1
 };
 
 typedef struct{
