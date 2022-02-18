@@ -1,5 +1,8 @@
 #include "stf.h"
+
+#include <stdbool.h>
 #include <stdio.h>
+#include <math.h>
 
 float mc_val;
 t_polar polar, ideal_polar;
