@@ -1,8 +1,8 @@
-#ifndef SPEEDTOFLY 
+#ifndef SPEEDTOFLY
 #define SPEEDTOFLY
 
 #include <math.h>
-	      
+
 #define RHO 1.225
 #define POL_A 0.000164
 #define POL_B -0.025714

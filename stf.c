@@ -30,7 +30,7 @@ float getIAS(float q){
 }
 
 void setMC(float mc){
-  mc_val=mc; 
+  mc_val=mc;
 }
 
 float getMC(){

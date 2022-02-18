@@ -9,13 +9,13 @@
 #include <errno.h>
 #include <assert.h>
 #include <pulse/pulseaudio.h>
-	      
+
 #define FORMAT PA_SAMPLE_S16LE
 #define RATE 44100
 #define BUFFER_SIZE 8192
 #define m_pi 3.14159265 //M_PI doesn't work, need to check why....
 
-#define DEADBAND_LOW -0.0  
+#define DEADBAND_LOW -0.0
 #define DEADBAND_HIGH 0.0  /*DEADBAND: Vario remains silent for DEADBAND_LOW < TE value < DEADBAND_HIGH */
 #define PULSE_LENGTH  48000 /*LENGTH of PULSE (PAUSE) for positive TE values, in samples*/
 #define PULSE_LENGTH_GAIN  1 /*PULSES get shorter with higher TE values*/
@@ -27,7 +27,7 @@
 #define FREQ_GAIN_POS 120
 #define FREQ_GAIN_NEG 0.85
 
-#define STF_DEADBAND_LOW -2.5  
+#define STF_DEADBAND_LOW -2.5
 #define STF_DEADBAND_HIGH 2.5  /*DEADBAND: Vario remains silent for DEADBAND_LOW < TE value < DEADBAND_HIGH */
 #define STF_PULSE_LENGTH  48000 /*LENGTH of PULSE (PAUSE) for positive values, in samples*/
 #define STF_PULSE_LENGTH_GAIN  0.2 /*PULSES get shorter with higher values*/

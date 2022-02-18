@@ -1,4 +1,4 @@
-#include "audiovario.h" 
+#include "audiovario.h"
 
 int16_t buffer[BUFFER_SIZE];
 unsigned int sample_rate=RATE;
@@ -48,7 +48,7 @@ void init_vario_config() {
 	vario_config[vario].pulse_length_gain = PULSE_LENGTH_GAIN; // This isn't really needed (see hival), but without it, the initial display will be wrong if nothing in conf file
 	vario_config[vario].pulse_rise = PULSE_RISE;
 	vario_config[vario].pulse_risei = 1.0/(float) PULSE_RISE;  // reciprocal of rise to avoid a divide
-	vario_config[vario].pulse_fall = PULSE_FALL; 
+	vario_config[vario].pulse_fall = PULSE_FALL;
 	vario_config[vario].pulse_falli = 1.0/(float) PULSE_FALL;   // reciprocal of fall to avoid a divide
 	vario_config[vario].pulse_riseduty = PULSE_RISE + PULSE_DUTY; // pre-calculate rise+duty
 	vario_config[vario].pulse_risedutyfall = PULSE_RISE + PULSE_DUTY + PULSE_FALL; // pre-calculate rise+duty+fall
@@ -65,7 +65,7 @@ void init_vario_config() {
 	vario_config[stf].pulse_length_gain = STF_PULSE_LENGTH_GAIN; // See above
 	vario_config[stf].pulse_rise = STF_PULSE_RISE;
 	vario_config[stf].pulse_risei = 1.0/(float)STF_PULSE_RISE; // reciprocal of rise to avoid a divide
-	vario_config[stf].pulse_fall = STF_PULSE_FALL; 
+	vario_config[stf].pulse_fall = STF_PULSE_FALL;
 	vario_config[stf].pulse_falli = 1.0/(float) STF_PULSE_FALL;  // reciprocal of fall to avoid a divide
 	vario_config[stf].pulse_riseduty = STF_PULSE_RISE + STF_PULSE_DUTY; // Pre-calculate rise+duty
 	vario_config[stf].pulse_risedutyfall = STF_PULSE_RISE + STF_PULSE_DUTY + STF_PULSE_FALL; // Pre-calculate rise+duty+fall
@@ -100,12 +100,12 @@ inline float triangle(float phase) {
 
 // Synthesize_vario fills the buffer based on operating mode (muted/deadband, climb, sink):
 // This is a substantial re-write from previous versions and introduces the concept of a taper, and removes the previous pulse_syn function.  The taper is a coefficient
-// between 0 and 1.  It is always being incremented (by uprate) or decremented (by downrate) based on taperd(irection), but is limited to the range of 0 to 1.    
-// Whenever switcheing operating mode, taperd and the rates are changed abruptly but taper is continuous, therefore there will always be a smooth volume transition.  
+// between 0 and 1.  It is always being incremented (by uprate) or decremented (by downrate) based on taperd(irection), but is limited to the range of 0 to 1.
+// Whenever switcheing operating mode, taperd and the rates are changed abruptly but taper is continuous, therefore there will always be a smooth volume transition.
 //
-// Climb mode is more challenging since the taperd changes to rising at pulse_phase_ptr=0, and to falling at pulse_phase_ptr = pulse_riseduty.  When switching into climb mode, 
+// Climb mode is more challenging since the taperd changes to rising at pulse_phase_ptr=0, and to falling at pulse_phase_ptr = pulse_riseduty.  When switching into climb mode,
 // pulse_phase_ptr is reset to the current taper location and direction is set based on the value of taper.  If taper is greater than .5, taperd is set to falling, else it's set to rising.
-// The hope is this will give the fastest possible audio response to switching modes. 
+// The hope is this will give the fastest possible audio response to switching modes.
 //
 // This function incorporates a "safeguard" which ensures only an integer number of triangle waveforms, ending at either 0 or 180 degrees are included in a buffer.  This is
 // probably unnecessary because of the taper, but it may help in the case of a buffer underrun.
@@ -114,17 +114,17 @@ inline float triangle(float phase) {
 
 size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config) {
 	int j=0, safeguard;
-	static int mode=0, taperd=0; 
+	static int mode=0, taperd=0;
 	static float deltaphase=vario_config->base_freq_pos, deltapulse=0; // phase accumulators
 	static float uprate, downrate;
 	static float taper=0;
 
 	if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) { // Mute/deadband mode
-		mode=taperd=0; 
+		mode=taperd=0;
 		uprate=downrate=0.001; // This might benefit from tweaking
-	} else { 
+	} else {
 		if (val<=0) { // Sink mode
-			mode=taperd=1; 
+			mode=taperd=1;
 			uprate=downrate=0.001; // This might benefit from tweaking
 			deltaphase = (vario_config->base_freq_neg / (1.0-val*vario_config->freq_gain_neg));
 		} else { // Climb mode
@@ -133,7 +133,7 @@ size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario
 					pulse_phase_ptr=taper*vario_config->pulse_rise;
 					taperd=1;
 				} else { // If above .5, set taper to fall
-					pulse_phase_ptr=vario_config->pulse_riseduty+(1-taper)*vario_config->pulse_fall; 
+					pulse_phase_ptr=vario_config->pulse_riseduty+(1-taper)*vario_config->pulse_fall;
 					taperd=0;
 				}
 			}
@@ -164,7 +164,7 @@ size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario
 			if (taper<0) taper=0; // Limit taper at 0.
 		}
 
-		if (mode==2) { // Implement climb mode 
+		if (mode==2) { // Implement climb mode
 			pulse_phase_ptr+=deltapulse; // Increment pulse_phase_ptr
 			if (pulse_phase_ptr>2*m_pi) { // If it rolls over...
 				pulse_phase_ptr-=(2*m_pi); // Perform modulo
@@ -215,14 +215,14 @@ void start_pcm() {
     pa_stream_set_state_callback(stream, stream_state_cb, mainloop);
     pa_stream_set_write_callback(stream, stream_write_cb, mainloop);
 
-    pa_buffer_attr buffer_attr; 
+    pa_buffer_attr buffer_attr;
     buffer_attr.maxlength = (uint32_t) -1;
     buffer_attr.tlength = (uint32_t) BUFFER_SIZE; //We need low latency!
     buffer_attr.prebuf = (uint32_t) -1;
     buffer_attr.minreq = (uint32_t) -1;
 
     pa_stream_flags_t stream_flags;
-    stream_flags = PA_STREAM_START_CORKED | PA_STREAM_INTERPOLATE_TIMING | 
+    stream_flags = PA_STREAM_START_CORKED | PA_STREAM_INTERPOLATE_TIMING |
         PA_STREAM_NOT_MONOTONIC | PA_STREAM_AUTO_TIMING_UPDATE |
         PA_STREAM_ADJUST_LATENCY;
 
@@ -237,7 +237,7 @@ void start_pcm() {
 
     pa_threaded_mainloop_unlock(mainloop);
     pa_stream_cork(stream, 0, stream_success_cb, mainloop);
-    
+
  }
 
 
@@ -251,7 +251,7 @@ void stream_state_cb(pa_stream *s, void *mainloop) {
 }
 
 void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) {
-    
+
 	size_t bytes_to_fill = BUFFER_SIZE*2;
 	int bytes_remaining = requested_bytes;
 	int bytes_filled;

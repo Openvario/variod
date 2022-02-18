@@ -17,22 +17,22 @@ $(ODIR)/%.o: %.c
 	$(CXX) -DVERSION_GIT=\"$(GIT_VERSION)\" -c -o $@ $< $(CFLAGS)
 
 all: variod
-	
-doc: 
+
+doc:
 	@echo Running doxygen to create documentation
 	doxygen
 
-version.h: 
+version.h:
 	@echo Git version $(GIT_VERSION)
 
 variod: $(OBJ)
 	$(CXX) -g -o $@ $^ $(LIBS)
-	
+
 install: variod
 	install -D variod $(BINDIR)/$(EXECUTABLE)
-	
+
 clean:
 	rm -f $(ODIR)/*.o *~ core $(EXECUTABLE)
 	rm -fr doc
 
-.PHONY: clean all doc	
+.PHONY: clean all doc

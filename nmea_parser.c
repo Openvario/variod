@@ -29,7 +29,7 @@ int verify_checksum (char *ptr) {
 	if (ptr[i]!='*') return 0;
 	if (k<10) {
 		if (ptr[i+2] != '0'+k) return 0;
-	} else { 
+	} else {
 		if (ptr[i+2] != 'A'+k-10) return 0;
 	}
 	j=j>>4;
@@ -52,12 +52,12 @@ inline void tx_mesg (char *client_message, int xcsoar_sock) {
 
 	checksum(client_message);
 	strcat(client_message,"\r\n");
-	if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0) 
+	if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
 		fprintf(stderr, "send failed\n");
 }
 
 void parse_NMEA_sensor(char* message, t_sensor_context* sensors, int xcsoar_sock)
-{ 
+{
 	static char buffer[2001]; // A long buffer to hold multiple messages;
 	char del1[2]="$",del2[2]=",";
 	char *ptr,*ptr2,*last; // Pointers into the buffer
@@ -78,7 +78,7 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors, int xcsoar_sock
 				if (status&0x10) strcat(status_mesg,",BU");
 				tx_mesg(status_mesg,xcsoar_sock);
 			}
-		}	
+		}
 	}
 
 	// Add new message to pre-existing buffer
@@ -100,7 +100,7 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors, int xcsoar_sock
 		while (ptr != NULL) {
 			last=ptr; // Store the pointer, needed if it is a valid sentence
 			invalid_sentence=1; // Let's assume it's not a valid sentence
-			if ((*ptr=='P') && (*(ptr+1)=='O') && (*(ptr+2)=='V') && (*(ptr+3)==',')) { // If you begin the sentence correctly  
+			if ((*ptr=='P') && (*(ptr+1)=='O') && (*(ptr+2)=='V') && (*(ptr+3)==',')) { // If you begin the sentence correctly
 				if (verify_checksum(ptr)) { // And checksum passes
 					invalid_sentence=0; // Looks like it is a valid sentence
 					ptr2=ptr+4; // Start looking after the $POV
@@ -125,7 +125,7 @@ void parse_NMEA_sensor(char* message, t_sensor_context* sensors, int xcsoar_sock
 						ptr2=strtok(NULL,del2); // Skip to the next comma after the value, if present -- it likely won't be
 					}
 					ptr=strtok(ptr, del1); // Successfully processed a sentence, so get back to tokenizing about $
-				} else ptr=strtok(NULL, del1); // Didn't find a valid checksum, so move on 
+				} else ptr=strtok(NULL, del1); // Didn't find a valid checksum, so move on
 			} else ptr=strtok(NULL,del1); // Didn't find a valid sentence start, so move on
 		}
 		if ((invalid_sentence) && (last!=NULL)) { // If the last sentence wasn't valid retain it for next time
@@ -142,7 +142,7 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 	char del1[2]="$",del2[2]=",";
 	char *ptr,*ptr2,*last; // Pointers into the buffer
 	char invalid_sentence=1;
-	char response[80]; // Response message to "$POV,?" 
+	char response[80]; // Response message to "$POV,?"
 	int i;
 	static char freshstart=1;
 	t_polar polar;
@@ -150,7 +150,7 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 	static float fvals[NUM_FV];
 
 	// Add new message to pre-existing buffer
-	if ((strlen(buffer)+strlen(message)>1998) || freshstart) { 
+	if ((strlen(buffer)+strlen(message)>1998) || freshstart) {
 		if (strlen(message)<2000) {
 			strcpy(buffer,message); // If the new message doesn't fit or it's a fresh start, replace the old message
 			ptr=strchr(buffer,'$'); // Look for a '$'
@@ -174,7 +174,7 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 					ptr2=ptr+4; // Start looking after the $POV
 					ptr+=strlen(ptr)+1; // Move ptr to the next POV
 					ptr2=strtok(ptr2,del2); // Tokenize about ','
-					while (ptr2 != NULL) { // Repeat until you hit the next '$'  
+					while (ptr2 != NULL) { // Repeat until you hit the next '$'
 						switch (*ptr2) {
 							case 'C':
 								// Command sentence
@@ -204,14 +204,14 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 									case 'B':
 										if (*(ptr2+1) == 'U') {
 											//Set Bugs
-								 			if ((ptr2 = strtok(NULL, del2))!=NULL) {	
+								 			if ((ptr2 = strtok(NULL, del2))!=NULL) {
 												setDegradation(atof(ptr2));
 												status&=(0x10^0xff);
 												debug_print("Get Bugs Value: %f\n",atof(ptr2));
 											}
 										}
 										break;
-									case 'N' : 
+									case 'N' :
 									  if (*(ptr2+1)=='A') {
 											// Not Available received
 											if ((ptr2 = strtok(NULL,del2))!=NULL) {
@@ -274,7 +274,7 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 										break;
 									case 'V':
 										switch (*(ptr2+1)) {
-											case 'U' : 
+											case 'U' :
 												// volume up
 												debug_print("Volume up\n");
 												change_volume(+10.0);
@@ -289,7 +289,7 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 												debug_print("Toggle Mute\n");
 												toggle_mute();
 												break;
-											case 'A' : 
+											case 'A' :
 					  							if  (*(ptr2+2) == 'R') {
 													// Set Vario Mode
 													status&=(0x20^0xff);
@@ -322,7 +322,7 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 												tx_mesg (response,xcsoar_sock);
 											}
 											break;
-										case 'M' : 
+										case 'M' :
 											if (*(ptr2+1)=='C') {
 												sprintf (response,"$POV,C,MC,%f",getMC());
 												tx_mesg (response,xcsoar_sock);
@@ -350,7 +350,7 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 						ptr2=strtok(NULL,del2);
 					}
 					ptr=strtok(ptr, del1); // Successfully processed a sentence, so get back to tokenizing about $, note ptr has been incremented
-				} else ptr=strtok(NULL, del1); // Didn't find a valid checksum, so move on 
+				} else ptr=strtok(NULL, del1); // Didn't find a valid checksum, so move on
 			} else ptr=strtok(NULL,del1); // Didn't find a valid sentence start, so move on
 		}
 		if ((invalid_sentence) && (last!=NULL)) { // If the last sentence wasn't valid retain it for next time
