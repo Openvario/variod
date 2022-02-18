@@ -1,21 +1,12 @@
 #ifndef AUDIOVARIO
 #define AUDIOVARIO
 
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <assert.h>
-#include <pulse/pulseaudio.h>
-	      
 #define FORMAT PA_SAMPLE_S16LE
 #define RATE 44100
 #define BUFFER_SIZE 8192
 #define m_pi 3.14159265 //M_PI doesn't work, need to check why....
 
-#define DEADBAND_LOW -0.0  
+#define DEADBAND_LOW -0.0
 #define DEADBAND_HIGH 0.0  /*DEADBAND: Vario remains silent for DEADBAND_LOW < TE value < DEADBAND_HIGH */
 #define PULSE_LENGTH  48000 /*LENGTH of PULSE (PAUSE) for positive TE values, in samples*/
 #define PULSE_LENGTH_GAIN  1 /*PULSES get shorter with higher TE values*/
@@ -27,7 +18,7 @@
 #define FREQ_GAIN_POS 120
 #define FREQ_GAIN_NEG 0.85
 
-#define STF_DEADBAND_LOW -2.5  
+#define STF_DEADBAND_LOW -2.5
 #define STF_DEADBAND_HIGH 2.5  /*DEADBAND: Vario remains silent for DEADBAND_LOW < TE value < DEADBAND_HIGH */
 #define STF_PULSE_LENGTH  48000 /*LENGTH of PULSE (PAUSE) for positive values, in samples*/
 #define STF_PULSE_LENGTH_GAIN  0.2 /*PULSES get shorter with higher values*/
@@ -40,8 +31,8 @@
 #define STF_FREQ_GAIN_NEG 0.1
 
 enum e_vario_mode{
-  vario = 0,
-  stf   = 1
+	vario = 0,
+	stf   = 1
 };
 
 typedef struct{
@@ -66,22 +57,12 @@ typedef struct{
 	float freq_gain_neg;
 } t_vario_config;
 
-
-
-void context_state_cb(pa_context* context, void* mainloop);
-void stream_state_cb(pa_stream *s, void *mainloop);
-void stream_success_cb(pa_stream *stream, int success, void *userdata);
-void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata);
-
-
 void toggle_mute();
 void vario_mute();
 void vario_unmute();
 float change_volume(float delta);
 float triangle(float phase );
-size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config);
 void start_pcm();
-void stop_pcm();
 void init_vario_config();
 
 t_vario_config* get_vario_config(enum e_vario_mode mode);

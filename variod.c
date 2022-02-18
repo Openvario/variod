@@ -1,15 +1,15 @@
 /*  vario_app - Audio Vario application - http://www.openvario.org/
     Copyright (C) 2014  The openvario project
-    A detailed list of copyright holders can be found in the file "AUTHORS" 
+    A detailed list of copyright holders can be found in the file "AUTHORS"
 
-    This program is free software; you can redistribute it and/or 
-    modify it under the terms of the GNU General Public License 
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
     as published by the Free Software Foundation; either version 3
     of the License, or (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -29,10 +29,11 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <time.h> 
+#include <time.h>
 #include <signal.h>
 #include <pthread.h>
 #include <syslog.h>
+#include <math.h>
 #include "audiovario.h"
 #include "cmdline_parser.h"
 #include "configfile_parser.h"
@@ -64,13 +65,13 @@ pthread_t tid_volume_control;
 /**
 * @brief Signal handler if variod will be interrupted
 * @param sig_num
-* @return 
-* 
+* @return
+*
 * Signal handler for catching STRG-C singal from command line
 * Closes all open files handles like log files
 * @date 17.04.2014 born
 *
-*/ 
+*/
 
 void INThandler(int sig)
 {
@@ -80,8 +81,8 @@ void INThandler(int sig)
 	close(connfd);
 	exit(0);
 }
-    
-static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar){
+
+static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
 		fprintf(stderr, "failed to connect, trying again\n");
 		fflush(stdout);
@@ -97,12 +98,12 @@ void add_checksum(char* msg){
 	len= strlen(msg);
 
 	while (i<len && msg[i]!='*'){
-		cs ^= msg[i];	
+		cs ^= msg[i];
 		i++;
 	}
-		
+
 	sprintf((char*) (msg+len), "%x",cs);
-	
+
 }
 
 void print_runtime_config(t_vario_config *vario_config)
@@ -125,7 +126,7 @@ void print_runtime_config(t_vario_config *vario_config)
 	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[stf].pulse_length_gain);
 	fprintf(fp_console,"  Base Frequency Positive:\t%f\n",vario_config[stf].base_freq_pos);
 	fprintf(fp_console,"  Base Frequency Negative:\t%f\n",vario_config[stf].base_freq_neg);
-	fprintf(fp_console,"=========================================================================\n");	
+	fprintf(fp_console,"=========================================================================\n");
 }
 
 int main(int argc, char *argv[])
@@ -140,7 +141,7 @@ int main(int argc, char *argv[])
 	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
- 	float v_sink_net, ias, stf_diff;
+	float v_sink_net, ias, stf_diff;
 
 	// for daemonizing
 	pid_t pid;
@@ -148,18 +149,18 @@ int main(int argc, char *argv[])
 
 	//parse command line arguments
 	cmdline_parser(argc, argv);
-	
+
 	//ignore sigpipe (i.e. XCSoar went offline)
 	signal(SIGPIPE, SIG_IGN);
-	
+
 	// init vario config structure
 	init_vario_config();
 	initSTF();
 
 	//set Polar to default values (ASW24)
-	polar.a = POL_A; 
-	polar.b = POL_B; 
-	polar.c = POL_C; 
+	polar.a = POL_A;
+	polar.b = POL_B;
+	polar.c = POL_C;
 	polar.w = POL_W;
 
 	setMC(1.0);
@@ -168,7 +169,7 @@ int main(int argc, char *argv[])
 	// get config file options
 	if (fp_config != NULL)
 		cfgfile_parser(fp_config, (t_vario_config*) &vario_config,&polar);
-	
+
 	setPolar(polar.a,polar.b,polar.c,polar.w);
 	// setup server
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -176,13 +177,13 @@ int main(int argc, char *argv[])
 	{
 		printf("Could not create socket");
 	}
-	printf("Socket created ...\n");	
-	
+	printf("Socket created ...\n");
+
 	// set server address and port for listening
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = inet_addr("127.0.0.1");
 	server.sin_port = htons(4353);
-	
+
 	nFlags = fcntl(listenfd, F_GETFL, 0);
 	nFlags |= O_NONBLOCK;
 	fcntl(listenfd, F_SETFD, nFlags);
@@ -194,9 +195,9 @@ int main(int argc, char *argv[])
 		printf("bind failed. Error");
 		return 1;
 	}
-	
-	listen(listenfd, 10); 
-	
+
+	listen(listenfd, 10);
+
 	// check if we are a daemon or stay in foreground
 	if (g_foreground == 1)
 	{
@@ -205,57 +206,57 @@ int main(int argc, char *argv[])
 		// open console again, but as file_pointer
 		fp_console = stdout;
 		stderr = stdout;
-		
+
 		// close the standard file descriptors
 		close(STDIN_FILENO);
 		//close(STDOUT_FILENO);
-		close(STDERR_FILENO);	
+		close(STDERR_FILENO);
 	}
 	else
 	{
 		// implement handler for kill command
 		printf("Daemonizing ...\n");
 		pid = fork();
-		
+
 		// something went wrong when forking
-		if (pid < 0) 
+		if (pid < 0)
 		{
 			exit(EXIT_FAILURE);
 		}
-		
+
 		// we are the parent
 		if (pid > 0)
-		{	
+		{
 			exit(EXIT_SUCCESS);
 		}
-		
+
 		// set umask to zero
 		umask(0);
-				
+
 		/* Try to create our own process group */
 		sid = setsid();
 		if (sid < 0) {
 			syslog(LOG_ERR, "Could not create process group\n");
 			exit(EXIT_FAILURE);
 		}
-		
+
 		// close the standard file descriptors
 		close(STDIN_FILENO);
 		close(STDOUT_FILENO);
 		close(STDERR_FILENO);
-		
+
 		//open file for log output
 		fp_console = fopen("variod.log","w+");
 		setbuf(fp_console, NULL);
 		stderr = fp_console;
 	}
-	
+
 	// all filepointers setup -> print config
 	print_runtime_config(&vario_config[vario_mode]);
-	
+
 	// setup and start pcm player
 	start_pcm();
-		
+
 	while(1) {
 		//Accept and incoming connection
 		fprintf(fp_console,"Waiting for incoming connections...\n");
@@ -270,14 +271,14 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 
-		fprintf(fp_console, "Connection accepted\n");	
-		
+		fprintf(fp_console, "Connection accepted\n");
+
 		// Socket is connected
 		// Open Socket for TCP/IP communication to XCSoar
 		xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
 		if (xcsoar_sock == -1)
 			fprintf(stderr, "could not create socket\n");
-	  
+
 		s_xcsoar.sin_addr.s_addr = inet_addr("127.0.0.1");
 		s_xcsoar.sin_family = AF_INET;
 		s_xcsoar.sin_port = htons(4352);
@@ -288,8 +289,8 @@ int main(int argc, char *argv[])
 		fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
 
 		//enable vario sound
-		vario_unmute();	
-		
+		vario_unmute();
+
 		//Receive a message from sensord and forward to XCsoar
 		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
 		{
@@ -297,16 +298,16 @@ int main(int argc, char *argv[])
 			client_message[read_size] = '\0';
 
 			parse_NMEA_sensor(client_message, &sensors,xcsoar_sock);
-			
+
 			//get the TE value from the message
 			ias = getIAS(sensors.q);
 			switch(vario_mode){
-				case vario: 
+				case vario:
 					set_audio_val(sensors.e);
 				break;
 				case stf:
 					//sensors.s=100;
-					
+
 					v_sink_net=getNet( -sensors.e, ias);
 					stf_diff=ias-getSTF(v_sink_net);
 
@@ -320,7 +321,7 @@ int main(int argc, char *argv[])
 			//printf("SendNMEA: %s",client_message);
 			// Send NMEA string via socket to XCSoar
 			if (send(xcsoar_sock, client_message, strlen(client_message), 0) < 0)
-			{	
+			{
 				if (errno==EPIPE){
 					fprintf(stderr,"XCSoar went offline, waiting\n");
 
@@ -330,9 +331,9 @@ int main(int argc, char *argv[])
 					xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
 					if (xcsoar_sock == -1)
 						fprintf(stderr, "could not create socket\n");
-					
+
 					wait_for_XCSoar(xcsoar_sock,(struct sockaddr*)&s_xcsoar);
-					
+
 					// make socket to XCsoar non-blocking
 					fcntl(xcsoar_sock, F_SETFL, O_NONBLOCK);
 					break;
@@ -340,27 +341,27 @@ int main(int argc, char *argv[])
 				} else {
 					fprintf(stderr, "send failed\n");
 				}
-			}	
+			}
 			// check if there is communication from XCSoar to us
 			if ((read_size = recv(xcsoar_sock , client_message , 2000, 0 )) > 0 )
 			{
 				// we got some message
 				// terminate received buffer
 				client_message[read_size] = '\0';
-				
+
 				ddebug_print("Message from XCSoar: %s\n",client_message);
 
 				// parse message from XCSoar
-				parse_NMEA_command(client_message,xcsoar_sock);	
-        	
+				parse_NMEA_command(client_message,xcsoar_sock);
+
 			}
-			
+
 		}
-		
+
 		// connection dropped cleanup
-		fprintf(fp_console, "Connection dropped\n");	
+		fprintf(fp_console, "Connection dropped\n");
 		fflush(fp_console);
-		
+
 		close(xcsoar_sock);
 		close(connfd);
 	}

@@ -1,5 +1,8 @@
 #include "stf.h"
+
+#include <stdbool.h>
 #include <stdio.h>
+#include <math.h>
 
 float mc_val;
 t_polar polar, ideal_polar;
@@ -12,7 +15,7 @@ float getSTF(float v_sink){
 	float stfsq, speed;
 	stfsq = (polar.c+mc_val+v_sink)/polar.a;
 	speed=(stfsq > 0)? sqrt(stfsq):0;
-  	return speed/3.6;
+	return speed/3.6;
 }
 
 float getPlaneSink(float ias){
@@ -30,11 +33,11 @@ float getIAS(float q){
 }
 
 void setMC(float mc){
-  mc_val=mc; 
+	mc_val=mc;
 }
 
 float getMC(){
-  return mc_val;
+	return mc_val;
 }
 
 /***********************************************

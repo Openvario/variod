@@ -1,8 +1,6 @@
-#ifndef SPEEDTOFLY 
+#ifndef SPEEDTOFLY
 #define SPEEDTOFLY
 
-#include <math.h>
-	      
 #define RHO 1.225
 #define POL_A 0.000164
 #define POL_B -0.025714
@@ -10,10 +8,9 @@
 #define POL_W 355
 
 typedef struct{
-  float a, b, c;
-  float w;
+	float a, b, c;
+	float w;
 } t_polar;
-
 
 float getSTF(float v_sink);
 float getPlaneSink(float ias);
