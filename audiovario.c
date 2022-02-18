@@ -113,7 +113,6 @@ inline float triangle(float phase) {
 // To improve performance, use of floating point divides is minimized versus legacy versions.
 
 static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config) {
-	int j=0, safeguard;
 	static int mode=0, taperd=0;
 	static float deltaphase=vario_config->base_freq_pos, deltapulse=0; // phase accumulators
 	static float uprate, downrate;
@@ -144,9 +143,9 @@ static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, 
 			downrate=deltapulse*vario_config->pulse_falli; // Calculate the falling edge rate
 		}
 	}
-	safeguard  = (int)round((floor((frames_n*deltaphase+phase_ptr-1)*0.5)*2.0-phase_ptr+1)/deltaphase); // Number of samples for integer number of cycles
+	const size_t safeguard  = (size_t)round((floor((frames_n*deltaphase+phase_ptr-1)*0.5)*2.0-phase_ptr+1)/deltaphase); // Number of samples for integer number of cycles
 
-	for (j=0;j<safeguard;++j) {
+	for (size_t j=0;j<safeguard;++j) {
 
 		//  It's possible this could be sped up by checking if taper = 0 in which case output is 0, or 1 in which case it's int_volume*triangle.
 		if (taper==0) pcm_buffer[j]=0;
@@ -172,7 +171,7 @@ static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, 
 			} else if (pulse_phase_ptr>=vario_config->pulse_riseduty) taperd=0; // Set taperd to falling edge if appropriate
 		}
 	}
-	return (size_t) safeguard;
+	return safeguard;
 }
 
 static void context_state_cb(pa_context* context, void* mainloop) {
@@ -186,8 +185,7 @@ static void stream_state_cb(pa_stream *s, void *mainloop) {
 static void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) {
 
 	size_t bytes_to_fill = BUFFER_SIZE*2;
-	int bytes_remaining = requested_bytes;
-	int bytes_filled;
+	size_t bytes_remaining = requested_bytes;
 	int repeat = 1;
 
 	do {
@@ -195,7 +193,7 @@ static void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *use
 			bytes_to_fill = bytes_remaining;
 			repeat=0;
 		}
-		bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
+		size_t bytes_filled=2*(synthesise_vario(audio_val, buffer, (size_t)bytes_to_fill/2, &(vario_config[vario_mode])));
 		pa_stream_write(stream, buffer, bytes_filled, NULL, 0LL, PA_SEEK_RELATIVE);
 		bytes_remaining -= bytes_filled;
 	} while (repeat);
