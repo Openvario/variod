@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <syslog.h>
+#include <math.h>
 #include "audiovario.h"
 #include "cmdline_parser.h"
 #include "configfile_parser.h"
