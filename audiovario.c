@@ -188,7 +188,6 @@ static void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *use
 	size_t bytes_to_fill = BUFFER_SIZE*2;
 	int bytes_remaining = requested_bytes;
 	int bytes_filled;
-	size_t maxfill;
 	int repeat = 1;
 
 	do {
