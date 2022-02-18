@@ -8,13 +8,14 @@
 #include <math.h>
 #include <assert.h>
 
+#define DEFAULT_VOLUME 50.0
+
 static int16_t buffer[BUFFER_SIZE];
-static unsigned int sample_rate=RATE;
-static float m4sr_ = 4.0/(float) sample_rate; // Pre-calculate 4 / sample_rate used for some future calculations
+static float m4sr_ = 4.0/(float) RATE; // Pre-calculate 4 / sample_rate used for some future calculations
 //static int synth_ptr=0; // Not sure what this does, don't need
 static bool mute=true;
-static float volume=50.0;
-static float int_volume=volume*327.67; // Pre-calculate volume
+static float volume=DEFAULT_VOLUME;
+static float int_volume=DEFAULT_VOLUME*327.67; // Pre-calculate volume
 static float phase_ptr=0.0;
 static float pulse_phase_ptr=0.0;
 
@@ -123,9 +124,15 @@ inline float triangle(float phase) {
 static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, t_vario_config *vario_config) {
 	static int mode=0;
 	static bool taperd=false;
-	static float deltaphase=vario_config->base_freq_pos, deltapulse=0; // phase accumulators
+	static bool initialized = false;
+	static float deltaphase, deltapulse=0; // phase accumulators
 	static float uprate, downrate;
 	static float taper=0;
+
+	if (!initialized) {
+		deltaphase=vario_config->base_freq_pos;
+		initialized = true;
+	}
 
 	if (mute || (val > vario_config->deadband_low && val < vario_config->deadband_high)) { // Mute/deadband mode
 		mode=0;

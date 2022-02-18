@@ -39,6 +39,6 @@
  * delim string of chars representing the limiters between values in the sentence.
  * return true on success or false if any of the checks fail
  ******************************************/
-bool read_float_from_sentence(int n,float fv[],char *str,const char *delim=",*");
+bool read_float_from_sentence(int n,float fv[],char *str,const char *delim);
 
 #endif // VARIOD_UTILS

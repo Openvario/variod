@@ -1,6 +1,6 @@
 # Makefile for sensord
 #Some compiler stuff and flags
-CFLAGS += -g -Wall -fpermissive
+CFLAGS += -g -Wall
 EXECUTABLE = variod
 _OBJ = audiovario.o variod.o cmdline_parser.o configfile_parser.o nmea_parser.o stf.o utils.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
@@ -14,7 +14,7 @@ GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 
 $(ODIR)/%.o: %.c
 	mkdir -p $(ODIR)
-	$(CXX) -DVERSION_GIT=\"$(GIT_VERSION)\" -c -o $@ $< $(CFLAGS)
+	$(CC) -DVERSION_GIT=\"$(GIT_VERSION)\" -c -o $@ $< $(CFLAGS)
 
 all: variod
 
@@ -26,7 +26,7 @@ version.h:
 	@echo Git version $(GIT_VERSION)
 
 variod: $(OBJ)
-	$(CXX) -g -o $@ $^ $(LIBS)
+	$(CC) -g -o $@ $^ $(LIBS)
 
 install: variod
 	install -D variod $(BINDIR)/$(EXECUTABLE)

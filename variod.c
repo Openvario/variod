@@ -82,7 +82,7 @@ void INThandler(int sig)
 	exit(0);
 }
 
-static void wait_for_XCSoar(int xcsoar_sock, sockaddr* s_xcsoar){
+static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
 		fprintf(stderr, "failed to connect, trying again\n");
 		fflush(stdout);
