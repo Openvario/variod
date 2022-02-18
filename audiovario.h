@@ -72,7 +72,6 @@ void vario_unmute();
 float change_volume(float delta);
 float triangle(float phase );
 void start_pcm();
-void stop_pcm();
 void init_vario_config();
 
 t_vario_config* get_vario_config(enum e_vario_mode mode);
