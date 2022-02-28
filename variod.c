@@ -41,9 +41,6 @@
 #include "nmea_parser.h"
 #include "def.h"
 
-
-int connfd = 0;
-
 int g_debug=1;
 
 int g_foreground=0;
@@ -78,7 +75,6 @@ void INThandler(int sig)
 	signal(sig, SIG_IGN);
 	printf("Exiting ...\n");
 	fclose(fp_console);
-	close(connfd);
 	exit(0);
 }
 
@@ -264,8 +260,8 @@ int main(int argc, char *argv[])
 		c = sizeof(struct sockaddr_in);
 
 		//accept connection from an incoming client
-		connfd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
-		if (connfd < 0)
+		const int sensord_fd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
+		if (sensord_fd < 0)
 		{
 			fprintf(stderr, "accept failed");
 			return 1;
@@ -292,7 +288,7 @@ int main(int argc, char *argv[])
 		vario_unmute();
 
 		//Receive a message from sensord and forward to XCsoar
-		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
+		while ((read_size = recv(sensord_fd , client_message , 2000, 0 )) > 0 )
 		{
 			// terminate received buffer
 			client_message[read_size] = '\0';
@@ -363,7 +359,7 @@ int main(int argc, char *argv[])
 		fflush(fp_console);
 
 		close(xcsoar_sock);
-		close(connfd);
+		close(sensord_fd);
 	}
 	return 0;
 }
