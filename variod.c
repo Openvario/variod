@@ -17,6 +17,7 @@
 */
 
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <arpa/inet.h>
@@ -127,14 +128,11 @@ void print_runtime_config(t_vario_config *vario_config)
 
 int main(int argc, char *argv[])
 {
-	int listenfd = 0;
-
 	// socket communication
 	int xcsoar_sock;
-	struct sockaddr_in server, s_xcsoar;
-	int c , read_size;
+	struct sockaddr_in s_xcsoar;
+	int read_size;
 	char client_message[2001];
-	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
 	float v_sink_net, ias, stf_diff;
@@ -167,32 +165,12 @@ int main(int argc, char *argv[])
 		cfgfile_parser(fp_config, (t_vario_config*) &vario_config,&polar);
 
 	setPolar(polar.a,polar.b,polar.c,polar.w);
-	// setup server
-	listenfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (listenfd == -1)
-	{
-		printf("Could not create socket");
-	}
-	printf("Socket created ...\n");
 
 	// set server address and port for listening
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = inet_addr("127.0.0.1");
-	server.sin_port = htons(4353);
-
-	nFlags = fcntl(listenfd, F_GETFL, 0);
-	nFlags |= O_NONBLOCK;
-	fcntl(listenfd, F_SETFD, nFlags);
-
-	//Bind listening socket
-	if( bind(listenfd,(struct sockaddr *)&server , sizeof(server)) < 0)
-	{
-		//print the error message
-		printf("bind failed. Error");
-		return 1;
-	}
-
-	listen(listenfd, 10);
+	struct sockaddr_un sensord_address;
+	sensord_address.sun_family = AF_LOCAL;
+	strcpy(sensord_address.sun_path, "/run/sensord.socket");
+	const size_t sensord_address_size = sizeof(sensord_address) - sizeof(sensord_address.sun_path) + strlen(sensord_address.sun_path);
 
 	// check if we are a daemon or stay in foreground
 	if (g_foreground == 1)
@@ -254,20 +232,25 @@ int main(int argc, char *argv[])
 	start_pcm();
 
 	while(1) {
-		//Accept and incoming connection
-		fprintf(fp_console,"Waiting for incoming connections...\n");
+		// connect to sensord
+		fprintf(fp_console,"Connecting to sensord...\n");
 		fflush(fp_console);
-		c = sizeof(struct sockaddr_in);
 
-		//accept connection from an incoming client
-		const int sensord_fd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
-		if (sensord_fd < 0)
-		{
-			fprintf(stderr, "accept failed");
-			return 1;
+		const int sensord_fd = socket(AF_LOCAL, SOCK_STREAM, 0);
+		if (sensord_fd == -1) {
+			printf("Could not create socket");
+			return EXIT_FAILURE;
 		}
 
-		fprintf(fp_console, "Connection accepted\n");
+		if (connect(sensord_fd, (struct sockaddr *)&sensord_address, sensord_address_size) < 0)
+		{
+			fprintf(stderr, "connect to sensord failed");
+			close(sensord_fd);
+			sleep(1);
+			continue;
+		}
+
+		fprintf(fp_console, "Connection to sensord established\n");
 
 		// Socket is connected
 		// Open Socket for TCP/IP communication to XCSoar
