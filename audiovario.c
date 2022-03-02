@@ -193,11 +193,11 @@ static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, 
 }
 
 static void context_state_cb(pa_context* context, void* mainloop) {
-    pa_threaded_mainloop_signal(mainloop, 0);
+	pa_threaded_mainloop_signal(mainloop, 0);
 }
 
 static void stream_state_cb(pa_stream *s, void *mainloop) {
-    pa_threaded_mainloop_signal(mainloop, 0);
+	pa_threaded_mainloop_signal(mainloop, 0);
 }
 
 static void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *userdata) {
@@ -218,7 +218,7 @@ static void stream_write_cb(pa_stream *stream, size_t requested_bytes, void *use
 }
 
 static void stream_success_cb(pa_stream *stream, int success, void *userdata) {
-    return;
+	return;
 }
 
 void start_pcm() {
