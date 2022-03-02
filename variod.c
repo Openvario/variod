@@ -60,25 +60,6 @@ extern float audio_val;
 pthread_t tid_audio_update;
 pthread_t tid_volume_control;
 
-/**
-* @brief Signal handler if variod will be interrupted
-* @param sig_num
-* @return
-*
-* Signal handler for catching STRG-C singal from command line
-* Closes all open files handles like log files
-* @date 17.04.2014 born
-*
-*/
-
-void INThandler(int sig)
-{
-	signal(sig, SIG_IGN);
-	printf("Exiting ...\n");
-	fclose(fp_console);
-	exit(0);
-}
-
 static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
 		fprintf(stderr, "failed to connect, trying again\n");
@@ -175,8 +156,6 @@ int main(int argc, char *argv[])
 	// check if we are a daemon or stay in foreground
 	if (g_foreground == 1)
 	{
-		// create CTRL-C handler
-		//signal(SIGINT, INThandler);
 		// open console again, but as file_pointer
 		fp_console = stdout;
 		stderr = stdout;
