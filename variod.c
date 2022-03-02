@@ -68,22 +68,6 @@ static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	}
 }
 
-void add_checksum(char* msg){
-	int i=1;
-	int cs=0;
-	int len;
-
-	len= strlen(msg);
-
-	while (i<len && msg[i]!='*'){
-		cs ^= msg[i];
-		i++;
-	}
-
-	sprintf((char*) (msg+len), "%x",cs);
-
-}
-
 void print_runtime_config(t_vario_config *vario_config)
 {
 	// print actual used config
