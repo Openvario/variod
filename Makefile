@@ -1,7 +1,7 @@
 # Makefile for sensord
 #Some compiler stuff and flags
 CFLAGS += -std=c11 -D_GNU_SOURCE
-CFLAGS += -g -Wall -Wextra
+CFLAGS += -g -Wall -Wextra -Wmissing-prototypes
 EXECUTABLE = variod
 _OBJ = audiovario.o variod.o cmdline_parser.o configfile_parser.o nmea_parser.o stf.o utils.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))

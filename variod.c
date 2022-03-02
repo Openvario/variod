@@ -68,7 +68,7 @@ static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	}
 }
 
-void print_runtime_config(t_vario_config *vario_config)
+static void print_runtime_config(t_vario_config *vario_config)
 {
 	// print actual used config
 	fprintf(fp_console,"=========================================================================\n");

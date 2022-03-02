@@ -57,13 +57,13 @@ typedef struct{
 	float freq_gain_neg;
 } t_vario_config;
 
-void toggle_mute();
-void vario_mute();
-void vario_unmute();
+void toggle_mute(void);
+void vario_mute(void);
+void vario_unmute(void);
 float change_volume(float delta);
 float triangle(float phase );
-void start_pcm();
-void init_vario_config();
+void start_pcm(void);
+void init_vario_config(void);
 
 t_vario_config* get_vario_config(enum e_vario_mode mode);
 void set_audio_val(float val);
