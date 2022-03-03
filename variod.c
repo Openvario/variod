@@ -42,9 +42,6 @@
 #include "nmea_parser.h"
 #include "log.h"
 
-extern t_vario_config vario_config[2];
-extern enum e_vario_mode vario_mode;
-
 static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
 		fprintf(stderr, "failed to connect, trying again\n");

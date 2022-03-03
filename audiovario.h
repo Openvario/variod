@@ -57,6 +57,9 @@ typedef struct{
 	float freq_gain_neg;
 } t_vario_config;
 
+extern t_vario_config vario_config[2];
+extern enum e_vario_mode vario_mode;
+
 void toggle_mute(void);
 void vario_mute(void);
 void vario_unmute(void);
