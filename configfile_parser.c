@@ -17,13 +17,10 @@
     along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
+#include "configfile_parser.h"
+
 #include <stdlib.h>
 #include <string.h>
-
-#include "configfile_parser.h"
-#include "audiovario.h"
-#include "stf.h"
 
 int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 {
