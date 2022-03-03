@@ -4,8 +4,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-extern int g_foreground;
-
 // Status bit shows what has been set:
 // 0x01 = Polar (deprecated), please do not use
 // 0x02 = Real Polar

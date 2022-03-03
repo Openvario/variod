@@ -17,5 +17,12 @@
     along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#pragma once
+
+#include <stdio.h>
+
+extern int g_foreground;
+
+extern FILE *fp_config;
 
 void cmdline_parser(int argc, char **argv);

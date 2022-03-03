@@ -42,10 +42,6 @@
 #include "nmea_parser.h"
 #include "log.h"
 
-int g_foreground=0;
-
-FILE *fp_config=NULL;
-
 extern t_vario_config vario_config[2];
 extern enum e_vario_mode vario_mode;
 

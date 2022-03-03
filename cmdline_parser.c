@@ -26,9 +26,9 @@
 #include <unistd.h>
 #include <string.h>
 
-extern int g_foreground;
+int g_foreground=0;
 
-extern FILE *fp_config;
+FILE *fp_config=NULL;
 
 void cmdline_parser(int argc, char **argv){
 
