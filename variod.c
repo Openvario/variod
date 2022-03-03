@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
 
 		//Receive a message from sensord and forward to XCsoar
 		char client_message[2001];
-		int read_size;
+		ssize_t read_size;
 		while ((read_size = recv(sensord_fd , client_message , 2000, 0 )) > 0 )
 		{
 			// terminate received buffer
