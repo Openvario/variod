@@ -76,17 +76,8 @@ static void print_runtime_config(t_vario_config *vario_config)
 int main(int argc, char *argv[])
 {
 	// socket communication
-	int xcsoar_sock;
-	struct sockaddr_in s_xcsoar;
-	int read_size;
-	char client_message[2001];
 	t_sensor_context sensors;
 	t_polar polar;
-	float v_sink_net, ias, stf_diff;
-
-	// for daemonizing
-	pid_t pid;
-	pid_t sid;
 
 	//parse command line arguments
 	cmdline_parser(argc, argv);
@@ -126,7 +117,7 @@ int main(int argc, char *argv[])
 	{
 		// implement handler for kill command
 		printf("Daemonizing ...\n");
-		pid = fork();
+		const pid_t pid = fork();
 
 		// something went wrong when forking
 		if (pid < 0)
@@ -144,7 +135,7 @@ int main(int argc, char *argv[])
 		umask(0);
 
 		/* Try to create our own process group */
-		sid = setsid();
+		const pid_t sid = setsid();
 		if (sid < 0) {
 			syslog(LOG_ERR, "Could not create process group\n");
 			exit(EXIT_FAILURE);
@@ -196,10 +187,11 @@ int main(int argc, char *argv[])
 
 		// Socket is connected
 		// Open Socket for TCP/IP communication to XCSoar
-		xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
+		int xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
 		if (xcsoar_sock == -1)
 			fprintf(stderr, "could not create socket\n");
 
+		struct sockaddr_in s_xcsoar;
 		s_xcsoar.sin_addr.s_addr = inet_addr("127.0.0.1");
 		s_xcsoar.sin_family = AF_INET;
 		s_xcsoar.sin_port = htons(4352);
@@ -213,6 +205,8 @@ int main(int argc, char *argv[])
 		vario_unmute();
 
 		//Receive a message from sensord and forward to XCsoar
+		char client_message[2001];
+		int read_size;
 		while ((read_size = recv(sensord_fd , client_message , 2000, 0 )) > 0 )
 		{
 			// terminate received buffer
@@ -221,7 +215,9 @@ int main(int argc, char *argv[])
 			parse_NMEA_sensor(client_message, &sensors,xcsoar_sock);
 
 			//get the TE value from the message
-			ias = getIAS(sensors.q);
+			const float ias = getIAS(sensors.q);
+
+			float v_sink_net, stf_diff;
 			switch(vario_mode){
 				case vario:
 					set_audio_val(sensors.e);
