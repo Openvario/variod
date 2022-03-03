@@ -130,12 +130,7 @@ int main(int argc, char *argv[])
 	const size_t sensord_address_size = sizeof(sensord_address) - sizeof(sensord_address.sun_path) + strlen(sensord_address.sun_path);
 
 	// check if we are a daemon or stay in foreground
-	if (g_foreground == 1)
-	{
-		// close the standard file descriptors
-		close(STDIN_FILENO);
-	}
-	else
+	if (!g_foreground)
 	{
 		// implement handler for kill command
 		printf("Daemonizing ...\n");
@@ -164,7 +159,11 @@ int main(int argc, char *argv[])
 		}
 
 		// close the standard file descriptors
-		close(STDIN_FILENO);
+		int null_fd = open("/dev/null", O_RDONLY);
+		if (null_fd >= 0) {
+			dup2(null_fd, STDIN_FILENO);
+			close(null_fd);
+		}
 
 		//open file for log output
 		int log_fd = open("variod.log", O_CREAT|O_WRONLY|O_TRUNC,
