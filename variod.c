@@ -57,9 +57,6 @@ extern enum e_vario_mode vario_mode;
 //and current airspeed
 extern float audio_val;
 
-pthread_t tid_audio_update;
-pthread_t tid_volume_control;
-
 static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
 		fprintf(stderr, "failed to connect, trying again\n");
