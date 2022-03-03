@@ -19,9 +19,10 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdio.h>
 
-extern int g_foreground;
+extern bool g_foreground;
 
 extern FILE *fp_config;
 

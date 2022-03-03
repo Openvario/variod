@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <string.h>
 
-int g_foreground=0;
+bool g_foreground = false;
 
 FILE *fp_config=NULL;
 
@@ -93,7 +93,7 @@ void cmdline_parser(int argc, char **argv){
 			case 'f':
 				// don't daemonize
 				printf("!! STAY in foreground !!\n");
-				g_foreground = 1;
+				g_foreground = true;
 				break;
 
 			case '?':
