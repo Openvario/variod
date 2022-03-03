@@ -17,12 +17,11 @@
     along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#pragma once
+
 /**
  * access class for various utilities and types
  */
-
-#ifndef VARIOD_UTILS
-#define VARIOD_UTILS
 
 #include <stdbool.h>
 
@@ -40,5 +39,3 @@
  * return true on success or false if any of the checks fail
  ******************************************/
 bool read_float_from_sentence(int n,float fv[],char *str,const char *delim);
-
-#endif // VARIOD_UTILS

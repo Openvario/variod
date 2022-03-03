@@ -16,13 +16,10 @@
     along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
 #include "utils.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 
 // see if we get all requested parameter(s) before we start setting them
