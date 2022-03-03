@@ -25,9 +25,6 @@
 #include "audiovario.h"
 #include "stf.h"
 
-extern int g_debug;
-extern FILE *fp_console;
-
 int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 {
 	char line[128];

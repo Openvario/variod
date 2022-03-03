@@ -40,13 +40,10 @@
 #include "configfile_parser.h"
 #include "stf.h"
 #include "nmea_parser.h"
-#include "def.h"
-
-int g_debug=1;
+#include "log.h"
 
 int g_foreground=0;
 
-FILE *fp_console=NULL;
 FILE *fp_config=NULL;
 
 extern t_vario_config vario_config[2];

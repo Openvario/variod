@@ -3,7 +3,7 @@
 CFLAGS += -std=c11 -D_GNU_SOURCE
 CFLAGS += -g -Wall -Wextra -Wmissing-prototypes
 EXECUTABLE = variod
-_OBJ = audiovario.o variod.o cmdline_parser.o configfile_parser.o nmea_parser.o stf.o utils.o
+_OBJ = audiovario.o variod.o cmdline_parser.o configfile_parser.o nmea_parser.o stf.o utils.o log.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 OBJ_CAL = $(patsubst %,$(ODIR)/%,$(_OBJ_CAL))
 LIBS = -lpulse -lm -lpthread

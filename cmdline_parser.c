@@ -19,19 +19,15 @@
 
 #include "cmdline_parser.h"
 #include "version.h"
+#include "log.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 
-
-extern int g_debug;
-//extern int g_log;
-
 extern int g_foreground;
 
-extern FILE *fp_console;
 extern FILE *fp_config;
 
 void cmdline_parser(int argc, char **argv){
