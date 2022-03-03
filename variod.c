@@ -126,8 +126,10 @@ int main(int argc, char *argv[])
 
 	// read config file
 	// get config file options
-	if (fp_config != NULL)
+	if (fp_config != NULL) {
 		cfgfile_parser(fp_config, (t_vario_config*) &vario_config,&polar);
+		fclose(fp_config);
+	}
 
 	setPolar(polar.a,polar.b,polar.c,polar.w);
 
