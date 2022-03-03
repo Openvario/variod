@@ -4,12 +4,12 @@
 #include <stdio.h>
 #include <math.h>
 
-float mc_val;
-t_polar polar, ideal_polar;
+static float mc_val;
+static t_polar polar, ideal_polar;
 // remember if we have received the Real Polar from XCSoar, yet.
-bool real_polar_valid = false;
-float ballast;
-float degradation;
+static bool real_polar_valid = false;
+static float ballast;
+static float degradation;
 
 float getSTF(float v_sink){
 	float stfsq, speed;
@@ -18,7 +18,7 @@ float getSTF(float v_sink){
 	return speed/3.6;
 }
 
-float getPlaneSink(float ias){
+static float getPlaneSink(float ias){
 	return polar.a*ias*ias+polar.b*ias+polar.c;
 }
 
