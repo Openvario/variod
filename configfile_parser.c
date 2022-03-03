@@ -19,6 +19,7 @@
 
 #include "configfile_parser.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -210,7 +211,7 @@ int cfgfile_parser(FILE *fp, t_vario_config *vario_config, t_polar *polar)
 			}
 		}
 		for (int i=0;i<2;++i) {
-			vario_config[i].loval=m_pi/vario_config[i].loval;
+			vario_config[i].loval=M_PI/vario_config[i].loval;
 			vario_config[i].hival*=vario_config[i].loval*2.0;
 			vario_config[i].pulse_riseduty+=vario_config[i].pulse_rise;
 			vario_config[i].pulse_risedutyfall=vario_config[i].pulse_riseduty+vario_config[i].pulse_falli;

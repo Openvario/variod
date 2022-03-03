@@ -69,7 +69,7 @@ void init_vario_config() {
 	vario_config[vario].base_freq_neg = (float) BASE_FREQ_NEG*m4sr_; // in units of: 100 grads per sample
 	vario_config[vario].freq_gain_pos = (float) FREQ_GAIN_POS*m4sr_; // in units of: 100 grads per sample per value
 	vario_config[vario].freq_gain_neg = (float) FREQ_GAIN_NEG;
-	vario_config[vario].loval = m_pi/(float) PULSE_LENGTH;
+	vario_config[vario].loval = M_PI/(float) PULSE_LENGTH;
 	vario_config[vario].hival = vario_config[vario].loval * 2.0 * PULSE_LENGTH_GAIN;
 
 	vario_config[stf].deadband_low = STF_DEADBAND_LOW;
@@ -86,7 +86,7 @@ void init_vario_config() {
 	vario_config[stf].base_freq_neg = (float) STF_BASE_FREQ_NEG*m4sr_; // in units of: 100 grads per sample
 	vario_config[stf].freq_gain_pos = (float) STF_FREQ_GAIN_POS*m4sr_; // in units of: 100 grads per sample per value
 	vario_config[stf].freq_gain_neg = STF_FREQ_GAIN_NEG;
-	vario_config[stf].loval = m_pi/(float) STF_PULSE_LENGTH;
+	vario_config[stf].loval = M_PI/(float) STF_PULSE_LENGTH;
 	vario_config[stf].hival = vario_config[stf].loval * 2.0 * STF_PULSE_LENGTH_GAIN;
 }
 
@@ -187,8 +187,8 @@ static size_t synthesise_vario(float val, int16_t* pcm_buffer, size_t frames_n, 
 
 		if (mode==2) { // Implement climb mode
 			pulse_phase_ptr+=deltapulse; // Increment pulse_phase_ptr
-			if (pulse_phase_ptr>2*m_pi) { // If it rolls over...
-				pulse_phase_ptr-=(2*m_pi); // Perform modulo
+			if (pulse_phase_ptr>2*M_PI) { // If it rolls over...
+				pulse_phase_ptr-=(2*M_PI); // Perform modulo
 				taperd=true; // Set taperd to rising edge
 			} else if (pulse_phase_ptr>=vario_config->pulse_riseduty) taperd=false; // Set taperd to falling edge if appropriate
 		}
