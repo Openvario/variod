@@ -22,6 +22,10 @@ static float pulse_phase_ptr=0.0;
 //two vario configs: one for vario one for STF
 t_vario_config vario_config[2];
 enum e_vario_mode vario_mode=vario;
+
+//this is the value to be synthesised: In vario mode it's the TE compensated
+//climb/sink value, in STF it is a value correlating to the difference of STF,
+//and current airspeed
 static float audio_val = 0.0;
 
 t_vario_config* get_vario_config(enum e_vario_mode mode){

@@ -45,11 +45,6 @@
 extern t_vario_config vario_config[2];
 extern enum e_vario_mode vario_mode;
 
-//this is the value to be synthesised: In vario mode it's the TE compensated
-//climb/sink value, in STF it is a value correlating to the difference of STF,
-//and current airspeed
-extern float audio_val;
-
 static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
 		fprintf(stderr, "failed to connect, trying again\n");
