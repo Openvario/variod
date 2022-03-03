@@ -20,5 +20,3 @@
 #include "log.h"
 
 int g_debug=1;
-
-FILE *fp_console=NULL;

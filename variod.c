@@ -61,24 +61,24 @@ static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 static void print_runtime_config(t_vario_config *vario_config)
 {
 	// print actual used config
-	fprintf(fp_console,"=========================================================================\n");
-	fprintf(fp_console,"Runtime Configuration:\n");
-	fprintf(fp_console,"----------------------\n");
-	fprintf(fp_console,"Vario:\n");
-	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config[vario].deadband_low);
-	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config[vario].deadband_high);
-	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config[vario].pulse_length);
-	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[vario].pulse_length_gain);
-	fprintf(fp_console,"  Base Frequency Positive:\t%f\n",vario_config[vario].base_freq_pos);
-	fprintf(fp_console,"  Base Frequency Negative:\t%f\n",vario_config[vario].base_freq_neg);
-	fprintf(fp_console,"Speed to fly:\n");
-	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config[stf].deadband_low);
-	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config[stf].deadband_high);
-	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config[stf].pulse_length);
-	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[stf].pulse_length_gain);
-	fprintf(fp_console,"  Base Frequency Positive:\t%f\n",vario_config[stf].base_freq_pos);
-	fprintf(fp_console,"  Base Frequency Negative:\t%f\n",vario_config[stf].base_freq_neg);
-	fprintf(fp_console,"=========================================================================\n");
+	fprintf(stderr,"=========================================================================\n");
+	fprintf(stderr,"Runtime Configuration:\n");
+	fprintf(stderr,"----------------------\n");
+	fprintf(stderr,"Vario:\n");
+	fprintf(stderr,"  Deadband Low:\t\t\t%f\n",vario_config[vario].deadband_low);
+	fprintf(stderr,"  Deadband High:\t\t%f\n",vario_config[vario].deadband_high);
+	fprintf(stderr,"  Pulse Pause Length:\t\t%d\n",vario_config[vario].pulse_length);
+	fprintf(stderr,"  Pulse Pause Length Gain:\t%f\n",vario_config[vario].pulse_length_gain);
+	fprintf(stderr,"  Base Frequency Positive:\t%f\n",vario_config[vario].base_freq_pos);
+	fprintf(stderr,"  Base Frequency Negative:\t%f\n",vario_config[vario].base_freq_neg);
+	fprintf(stderr,"Speed to fly:\n");
+	fprintf(stderr,"  Deadband Low:\t\t\t%f\n",vario_config[stf].deadband_low);
+	fprintf(stderr,"  Deadband High:\t\t%f\n",vario_config[stf].deadband_high);
+	fprintf(stderr,"  Pulse Pause Length:\t\t%d\n",vario_config[stf].pulse_length);
+	fprintf(stderr,"  Pulse Pause Length Gain:\t%f\n",vario_config[stf].pulse_length_gain);
+	fprintf(stderr,"  Base Frequency Positive:\t%f\n",vario_config[stf].base_freq_pos);
+	fprintf(stderr,"  Base Frequency Negative:\t%f\n",vario_config[stf].base_freq_neg);
+	fprintf(stderr,"=========================================================================\n");
 }
 
 int main(int argc, char *argv[])
@@ -132,14 +132,8 @@ int main(int argc, char *argv[])
 	// check if we are a daemon or stay in foreground
 	if (g_foreground == 1)
 	{
-		// open console again, but as file_pointer
-		fp_console = stdout;
-		stderr = stdout;
-
 		// close the standard file descriptors
 		close(STDIN_FILENO);
-		//close(STDOUT_FILENO);
-		close(STDERR_FILENO);
 	}
 	else
 	{
@@ -171,13 +165,15 @@ int main(int argc, char *argv[])
 
 		// close the standard file descriptors
 		close(STDIN_FILENO);
-		close(STDOUT_FILENO);
-		close(STDERR_FILENO);
 
 		//open file for log output
-		fp_console = fopen("variod.log","w+");
-		setbuf(fp_console, NULL);
-		stderr = fp_console;
+		int log_fd = open("variod.log", O_CREAT|O_WRONLY|O_TRUNC,
+				  0666);
+		if (log_fd >= 0) {
+			dup2(log_fd, STDOUT_FILENO);
+			dup2(log_fd, STDERR_FILENO);
+			close(log_fd);
+		}
 	}
 
 	// all filepointers setup -> print config
@@ -188,8 +184,8 @@ int main(int argc, char *argv[])
 
 	while(1) {
 		// connect to sensord
-		fprintf(fp_console,"Connecting to sensord...\n");
-		fflush(fp_console);
+		fprintf(stderr,"Connecting to sensord...\n");
+		fflush(stderr);
 
 		const int sensord_fd = socket(AF_LOCAL, SOCK_STREAM, 0);
 		if (sensord_fd == -1) {
@@ -205,7 +201,7 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
-		fprintf(fp_console, "Connection to sensord established\n");
+		fprintf(stderr, "Connection to sensord established\n");
 
 		// Socket is connected
 		// Open Socket for TCP/IP communication to XCSoar
@@ -293,8 +289,8 @@ int main(int argc, char *argv[])
 		}
 
 		// connection dropped cleanup
-		fprintf(fp_console, "Connection dropped\n");
-		fflush(fp_console);
+		fprintf(stderr, "Connection dropped\n");
+		fflush(stderr);
 
 		close(xcsoar_sock);
 		close(sensord_fd);
