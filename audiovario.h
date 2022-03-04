@@ -4,7 +4,6 @@
 #define FORMAT PA_SAMPLE_S16LE
 #define RATE 44100
 #define BUFFER_SIZE 8192
-#define m_pi 3.14159265 //M_PI doesn't work, need to check why....
 
 #define DEADBAND_LOW -0.0
 #define DEADBAND_HIGH 0.0  /*DEADBAND: Vario remains silent for DEADBAND_LOW < TE value < DEADBAND_HIGH */
@@ -57,13 +56,16 @@ typedef struct{
 	float freq_gain_neg;
 } t_vario_config;
 
-void toggle_mute();
-void vario_mute();
-void vario_unmute();
+extern t_vario_config vario_config[2];
+extern enum e_vario_mode vario_mode;
+
+void toggle_mute(void);
+void vario_mute(void);
+void vario_unmute(void);
 float change_volume(float delta);
 float triangle(float phase );
-void start_pcm();
-void init_vario_config();
+void start_pcm(void);
+void init_vario_config(void);
 
 t_vario_config* get_vario_config(enum e_vario_mode mode);
 void set_audio_val(float val);

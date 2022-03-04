@@ -1,12 +1,8 @@
 #include "nmea_parser.h"
-#include "def.h"
+#include "log.h"
 #include "utils.h"
 #include <sys/types.h>
 #include <sys/socket.h>
-
-extern int g_debug;
-extern int g_foreground;
-extern FILE *fp_console;
 
 // Status bit shows what has been set:
 // 0x01 = Polar (deprecated), please do not use

@@ -17,20 +17,18 @@
     along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cmdline_parser.h"
 #include "version.h"
+#include "log.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 
+bool g_foreground = false;
 
-extern int g_debug;
-//extern int g_log;
-
-extern int g_foreground;
-
-extern FILE *fp_console;
-extern FILE *fp_config;
+FILE *fp_config=NULL;
 
 void cmdline_parser(int argc, char **argv){
 
@@ -95,7 +93,7 @@ void cmdline_parser(int argc, char **argv){
 			case 'f':
 				// don't daemonize
 				printf("!! STAY in foreground !!\n");
-				g_foreground = 1;
+				g_foreground = true;
 				break;
 
 			case '?':

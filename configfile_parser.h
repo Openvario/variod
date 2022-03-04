@@ -17,7 +17,11 @@
     along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#pragma once
+
 #include "audiovario.h"
 #include "stf.h"
+
+#include <stdio.h>
 
 int cfgfile_parser(FILE *, t_vario_config *, t_polar *);

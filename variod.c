@@ -17,6 +17,7 @@
 */
 
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <arpa/inet.h>
@@ -39,48 +40,7 @@
 #include "configfile_parser.h"
 #include "stf.h"
 #include "nmea_parser.h"
-#include "def.h"
-
-
-int connfd = 0;
-
-int g_debug=1;
-
-int g_foreground=0;
-
-FILE *fp_console=NULL;
-FILE *fp_config=NULL;
-
-extern t_vario_config vario_config[2];
-extern enum e_vario_mode vario_mode;
-
-//this is the value to be synthesised: In vario mode it's the TE compensated
-//climb/sink value, in STF it is a value correlating to the difference of STF,
-//and current airspeed
-extern float audio_val;
-
-pthread_t tid_audio_update;
-pthread_t tid_volume_control;
-
-/**
-* @brief Signal handler if variod will be interrupted
-* @param sig_num
-* @return
-*
-* Signal handler for catching STRG-C singal from command line
-* Closes all open files handles like log files
-* @date 17.04.2014 born
-*
-*/
-
-void INThandler(int sig)
-{
-	signal(sig, SIG_IGN);
-	printf("Exiting ...\n");
-	fclose(fp_console);
-	close(connfd);
-	exit(0);
-}
+#include "log.h"
 
 static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	while (connect(xcsoar_sock, s_xcsoar, sizeof(*s_xcsoar)) < 0) {
@@ -90,62 +50,34 @@ static void wait_for_XCSoar(int xcsoar_sock, struct sockaddr* s_xcsoar){
 	}
 }
 
-void add_checksum(char* msg){
-	int i=1;
-	int cs=0;
-	int len;
-
-	len= strlen(msg);
-
-	while (i<len && msg[i]!='*'){
-		cs ^= msg[i];
-		i++;
-	}
-
-	sprintf((char*) (msg+len), "%x",cs);
-
-}
-
-void print_runtime_config(t_vario_config *vario_config)
+static void print_runtime_config(t_vario_config *vario_config)
 {
 	// print actual used config
-	fprintf(fp_console,"=========================================================================\n");
-	fprintf(fp_console,"Runtime Configuration:\n");
-	fprintf(fp_console,"----------------------\n");
-	fprintf(fp_console,"Vario:\n");
-	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config[vario].deadband_low);
-	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config[vario].deadband_high);
-	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config[vario].pulse_length);
-	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[vario].pulse_length_gain);
-	fprintf(fp_console,"  Base Frequency Positive:\t%f\n",vario_config[vario].base_freq_pos);
-	fprintf(fp_console,"  Base Frequency Negative:\t%f\n",vario_config[vario].base_freq_neg);
-	fprintf(fp_console,"Speed to fly:\n");
-	fprintf(fp_console,"  Deadband Low:\t\t\t%f\n",vario_config[stf].deadband_low);
-	fprintf(fp_console,"  Deadband High:\t\t%f\n",vario_config[stf].deadband_high);
-	fprintf(fp_console,"  Pulse Pause Length:\t\t%d\n",vario_config[stf].pulse_length);
-	fprintf(fp_console,"  Pulse Pause Length Gain:\t%f\n",vario_config[stf].pulse_length_gain);
-	fprintf(fp_console,"  Base Frequency Positive:\t%f\n",vario_config[stf].base_freq_pos);
-	fprintf(fp_console,"  Base Frequency Negative:\t%f\n",vario_config[stf].base_freq_neg);
-	fprintf(fp_console,"=========================================================================\n");
+	fprintf(stderr,"=========================================================================\n");
+	fprintf(stderr,"Runtime Configuration:\n");
+	fprintf(stderr,"----------------------\n");
+	fprintf(stderr,"Vario:\n");
+	fprintf(stderr,"  Deadband Low:\t\t\t%f\n",vario_config[vario].deadband_low);
+	fprintf(stderr,"  Deadband High:\t\t%f\n",vario_config[vario].deadband_high);
+	fprintf(stderr,"  Pulse Pause Length:\t\t%d\n",vario_config[vario].pulse_length);
+	fprintf(stderr,"  Pulse Pause Length Gain:\t%f\n",vario_config[vario].pulse_length_gain);
+	fprintf(stderr,"  Base Frequency Positive:\t%f\n",vario_config[vario].base_freq_pos);
+	fprintf(stderr,"  Base Frequency Negative:\t%f\n",vario_config[vario].base_freq_neg);
+	fprintf(stderr,"Speed to fly:\n");
+	fprintf(stderr,"  Deadband Low:\t\t\t%f\n",vario_config[stf].deadband_low);
+	fprintf(stderr,"  Deadband High:\t\t%f\n",vario_config[stf].deadband_high);
+	fprintf(stderr,"  Pulse Pause Length:\t\t%d\n",vario_config[stf].pulse_length);
+	fprintf(stderr,"  Pulse Pause Length Gain:\t%f\n",vario_config[stf].pulse_length_gain);
+	fprintf(stderr,"  Base Frequency Positive:\t%f\n",vario_config[stf].base_freq_pos);
+	fprintf(stderr,"  Base Frequency Negative:\t%f\n",vario_config[stf].base_freq_neg);
+	fprintf(stderr,"=========================================================================\n");
 }
 
 int main(int argc, char *argv[])
 {
-	int listenfd = 0;
-
 	// socket communication
-	int xcsoar_sock;
-	struct sockaddr_in server, s_xcsoar;
-	int c , read_size;
-	char client_message[2001];
-	int nFlags;
 	t_sensor_context sensors;
 	t_polar polar;
-	float v_sink_net, ias, stf_diff;
-
-	// for daemonizing
-	pid_t pid;
-	pid_t sid;
 
 	//parse command line arguments
 	cmdline_parser(argc, argv);
@@ -167,56 +99,25 @@ int main(int argc, char *argv[])
 
 	// read config file
 	// get config file options
-	if (fp_config != NULL)
+	if (fp_config != NULL) {
 		cfgfile_parser(fp_config, (t_vario_config*) &vario_config,&polar);
+		fclose(fp_config);
+	}
 
 	setPolar(polar.a,polar.b,polar.c,polar.w);
-	// setup server
-	listenfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (listenfd == -1)
-	{
-		printf("Could not create socket");
-	}
-	printf("Socket created ...\n");
 
 	// set server address and port for listening
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = inet_addr("127.0.0.1");
-	server.sin_port = htons(4353);
-
-	nFlags = fcntl(listenfd, F_GETFL, 0);
-	nFlags |= O_NONBLOCK;
-	fcntl(listenfd, F_SETFD, nFlags);
-
-	//Bind listening socket
-	if( bind(listenfd,(struct sockaddr *)&server , sizeof(server)) < 0)
-	{
-		//print the error message
-		printf("bind failed. Error");
-		return 1;
-	}
-
-	listen(listenfd, 10);
+	struct sockaddr_un sensord_address;
+	sensord_address.sun_family = AF_LOCAL;
+	strcpy(sensord_address.sun_path, "/run/sensord.socket");
+	const size_t sensord_address_size = sizeof(sensord_address) - sizeof(sensord_address.sun_path) + strlen(sensord_address.sun_path);
 
 	// check if we are a daemon or stay in foreground
-	if (g_foreground == 1)
-	{
-		// create CTRL-C handler
-		//signal(SIGINT, INThandler);
-		// open console again, but as file_pointer
-		fp_console = stdout;
-		stderr = stdout;
-
-		// close the standard file descriptors
-		close(STDIN_FILENO);
-		//close(STDOUT_FILENO);
-		close(STDERR_FILENO);
-	}
-	else
+	if (!g_foreground)
 	{
 		// implement handler for kill command
 		printf("Daemonizing ...\n");
-		pid = fork();
+		const pid_t pid = fork();
 
 		// something went wrong when forking
 		if (pid < 0)
@@ -234,21 +135,27 @@ int main(int argc, char *argv[])
 		umask(0);
 
 		/* Try to create our own process group */
-		sid = setsid();
+		const pid_t sid = setsid();
 		if (sid < 0) {
 			syslog(LOG_ERR, "Could not create process group\n");
 			exit(EXIT_FAILURE);
 		}
 
 		// close the standard file descriptors
-		close(STDIN_FILENO);
-		close(STDOUT_FILENO);
-		close(STDERR_FILENO);
+		int null_fd = open("/dev/null", O_RDONLY);
+		if (null_fd >= 0) {
+			dup2(null_fd, STDIN_FILENO);
+			close(null_fd);
+		}
 
 		//open file for log output
-		fp_console = fopen("variod.log","w+");
-		setbuf(fp_console, NULL);
-		stderr = fp_console;
+		int log_fd = open("variod.log", O_CREAT|O_WRONLY|O_TRUNC,
+				  0666);
+		if (log_fd >= 0) {
+			dup2(log_fd, STDOUT_FILENO);
+			dup2(log_fd, STDERR_FILENO);
+			close(log_fd);
+		}
 	}
 
 	// all filepointers setup -> print config
@@ -258,27 +165,33 @@ int main(int argc, char *argv[])
 	start_pcm();
 
 	while(1) {
-		//Accept and incoming connection
-		fprintf(fp_console,"Waiting for incoming connections...\n");
-		fflush(fp_console);
-		c = sizeof(struct sockaddr_in);
+		// connect to sensord
+		fprintf(stderr,"Connecting to sensord...\n");
+		fflush(stderr);
 
-		//accept connection from an incoming client
-		connfd = accept(listenfd, (struct sockaddr *)&s_xcsoar, (socklen_t*)&c);
-		if (connfd < 0)
-		{
-			fprintf(stderr, "accept failed");
-			return 1;
+		const int sensord_fd = socket(AF_LOCAL, SOCK_STREAM, 0);
+		if (sensord_fd == -1) {
+			printf("Could not create socket");
+			return EXIT_FAILURE;
 		}
 
-		fprintf(fp_console, "Connection accepted\n");
+		if (connect(sensord_fd, (struct sockaddr *)&sensord_address, sensord_address_size) < 0)
+		{
+			fprintf(stderr, "connect to sensord failed");
+			close(sensord_fd);
+			sleep(1);
+			continue;
+		}
+
+		fprintf(stderr, "Connection to sensord established\n");
 
 		// Socket is connected
 		// Open Socket for TCP/IP communication to XCSoar
-		xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
+		int xcsoar_sock = socket(AF_INET, SOCK_STREAM, 0);
 		if (xcsoar_sock == -1)
 			fprintf(stderr, "could not create socket\n");
 
+		struct sockaddr_in s_xcsoar;
 		s_xcsoar.sin_addr.s_addr = inet_addr("127.0.0.1");
 		s_xcsoar.sin_family = AF_INET;
 		s_xcsoar.sin_port = htons(4352);
@@ -292,7 +205,9 @@ int main(int argc, char *argv[])
 		vario_unmute();
 
 		//Receive a message from sensord and forward to XCsoar
-		while ((read_size = recv(connfd , client_message , 2000, 0 )) > 0 )
+		char client_message[2001];
+		ssize_t read_size;
+		while ((read_size = recv(sensord_fd , client_message , 2000, 0 )) > 0 )
 		{
 			// terminate received buffer
 			client_message[read_size] = '\0';
@@ -300,7 +215,9 @@ int main(int argc, char *argv[])
 			parse_NMEA_sensor(client_message, &sensors,xcsoar_sock);
 
 			//get the TE value from the message
-			ias = getIAS(sensors.q);
+			const float ias = getIAS(sensors.q);
+
+			float v_sink_net, stf_diff;
 			switch(vario_mode){
 				case vario:
 					set_audio_val(sensors.e);
@@ -359,11 +276,11 @@ int main(int argc, char *argv[])
 		}
 
 		// connection dropped cleanup
-		fprintf(fp_console, "Connection dropped\n");
-		fflush(fp_console);
+		fprintf(stderr, "Connection dropped\n");
+		fflush(stderr);
 
 		close(xcsoar_sock);
-		close(connfd);
+		close(sensord_fd);
 	}
 	return 0;
 }

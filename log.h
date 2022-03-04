@@ -1,4 +1,5 @@
-/*  vario_app - Audio Vario application - http://www.openvario.org/
+/*
+	sensord - Sensor Interface for XCSoar Glide Computer - http://www.openvario.org/
     Copyright (C) 2014  The openvario project
     A detailed list of copyright holders can be found in the file "AUTHORS"
 
@@ -16,27 +17,11 @@
     along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "utils.h"
+#pragma once
 
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 
+extern int g_debug;
 
-// see if we get all requested parameter(s) before we start setting them
-bool read_float_from_sentence(int n,float fv[],char *str,const char *delim)
-{
-	char *vp;
-	char *endptr;
-
-	if (n > NUM_FV) return false;
-
-	for (int i=0; i < n; i++) {
-		vp = strtok(str,delim);
-		if (vp == NULL) return false;
-
-		fv[i] = strtof(vp,&endptr);
-		if (endptr == vp || *endptr != 0) return false;
-	}
-	return true;
-}
-
+#define debug_print(...) if(g_debug>0)fprintf(stderr,__VA_ARGS__)
+#define ddebug_print(...) if(g_debug>1)fprintf(stderr,__VA_ARGS__)
