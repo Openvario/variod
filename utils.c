@@ -23,7 +23,7 @@
 
 
 // copies n floats to fv[]
-bool read_float_from_sentence(int n,float fv[],char *str,const char *delim)
+bool read_float_from_sentence(int n,float fv[],char *str)
 {
 	char *comma;
 	if (n > NUM_FV) return false;
