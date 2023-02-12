@@ -248,7 +248,7 @@ void parse_NMEA_command(char* message, int xcsoar_sock)
 									case 'R':
 										//Set Real Polar
 										if (*(ptr2+1) == 'P' &&  *(ptr2+2) == 'O') {
-											if (read_float_from_sentence(3,fvals,ptr2+4,del2)) {
+											if (read_float_from_sentence(3,fvals,ptr2+4)) {
 												// convert horizontal speed from m/s to km/h
 												status&=(0x02^0xff);
 											  	polar.a=fvals[0]/(3.6*3.6);

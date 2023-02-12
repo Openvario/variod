@@ -22,20 +22,24 @@
 #include <string.h>
 
 
-// see if we get all requested parameter(s) before we start setting them
-bool read_float_from_sentence(int n,float fv[],char *str,const char *delim)
+// copies n floats to fv[]
+bool read_float_from_sentence(int n,float fv[],char *str)
 {
-	char *vp;
-	char *endptr;
-
+	char *comma;
 	if (n > NUM_FV) return false;
 
 	for (int i=0; i < n; i++) {
-		vp = strtok(str,delim);
-		if (vp == NULL) return false;
-
-		fv[i] = strtof(vp,&endptr);
-		if (endptr == vp || *endptr != 0) return false;
+		if (i!=n-1){
+			fv[i] = strtof(str,&comma);
+			str=comma;
+			++str;
+		}
+		else{
+			fv[i] = strtof(str,NULL);
+		}
+		if(fv[i]==0.0f){
+			return false;
+		}
 	}
 	return true;
 }
